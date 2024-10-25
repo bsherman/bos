@@ -5,9 +5,8 @@ set -ouex pipefail
 case "${IMAGE}" in
 "bluefin"*)
     /ctx/build_files/desktop-changes.sh
+    /ctx/build_files/desktop-fixups-steam.sh
     /ctx/build_files/desktop-packages.sh
-    # probably needs build-fix.sh to fix skew
-    #/ctx/build_files/steam.sh
     ;;
 "bazzite"*)
     /ctx/build_files/desktop-changes.sh

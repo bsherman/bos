@@ -50,7 +50,7 @@ jobs:
             echo "base_image=${base_image}" >> $GITHUB_ENV
 
       - name: Verify Base Image
-        uses: EyeCantCU/cosign-action/verify@v0.2.2
+        uses: EyeCantCU/cosign-action/verify@v0.3.0
         with:
           containers: ${{ env.base_image }}:${{ env.tag_version }}
           pubkey: https://raw.githubusercontent.com/ublue-os/${{ env.upstream_repo }}/main/cosign.pub

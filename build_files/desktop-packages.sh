@@ -6,7 +6,7 @@ echo "Running desktop packages scripts..."
 /ctx/build_files/desktop-1password.sh
 
 # common packages installed to desktops
-rpm-ostree install \
+dnf install -y \
   google-noto-sans-fonts \
   ibm-plex-fonts-all \
   gh \

@@ -12,7 +12,7 @@ gpgcheck=1
 gpgkey=https://download.docker.com/linux/fedora/gpg
 EOF
 
-rpm-ostree install \
+dnf install -y \
   containerd.io \
   docker-buildx-plugin \
   docker-ce \

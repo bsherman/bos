@@ -3,7 +3,7 @@
 set -ouex pipefail
 
 # cockpit extensions not in ucore
-dnf install -y cockpit-files cockpit-ostree
+dnf5 install -y cockpit-files cockpit-ostree
 
 # cockpit-zfs-manager
 git clone https://github.com/45drives/cockpit-zfs-manager.git

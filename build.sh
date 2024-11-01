@@ -2,6 +2,9 @@
 
 set -ouex pipefail
 
+export RPMOSTREE_CLIWRAP_SKIP=1
+rpm-ostree install dnf5
+
 case "${IMAGE}" in
 "bluefin"*)
     /ctx/build_files/desktop-changes.sh

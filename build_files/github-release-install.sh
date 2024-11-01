@@ -54,7 +54,7 @@ RPM_URLS=$(cat ${API_JSON} \
     '.assets | sort_by(.created_at) | reverse | .[] | select(.name|test($arch_filter)) | select (.name|test("rpm$")) | .browser_download_url')
 for URL in ${RPM_URLS}; do
   # WARNING: in case of multiple matches, this only installs the first matched release
-  echo "execute: dnf install -y \"${URL}\""
-  dnf install -y "${URL}"
+  echo "execute: dnf5 install -y \"${URL}\""
+  dnf5 install -y "${URL}"
   break
 done

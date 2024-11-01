@@ -6,7 +6,7 @@ echo "Running server packages scripts..."
 /ctx/build_files/server-docker-ce.sh
 
 # common packages installed to desktops and servers
-dnf install -y \
+dnf5 install -y \
   bc \
   erofs-utils \
   hdparm \

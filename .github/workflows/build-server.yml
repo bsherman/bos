@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Build Variables
         id: labels
-        uses: Wandalen/wretry.action@v3.5.0
+        uses: Wandalen/wretry.action@v3.7.0
         with:
           attempt_limit: 3
           attempt_delay: 15000
@@ -57,7 +57,7 @@ jobs:
           registry: ghcr.io/ublue-os
 
       - name: Pull Images
-        uses: Wandalen/wretry.action@v3.5.0
+        uses: Wandalen/wretry.action@v3.7.0
         id: pull
         with:
           attempt_limit: 3
@@ -169,7 +169,7 @@ jobs:
           string: ${{ env.IMAGE_REGISTRY }}
 
       - name: Push to GHCR
-        uses: Wandalen/wretry.action@v3.5.0
+        uses: Wandalen/wretry.action@v3.7.0
         id: push
         if: github.event_name != 'pull_request'
         env:

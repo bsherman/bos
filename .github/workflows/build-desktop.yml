@@ -157,7 +157,7 @@ jobs:
 
       - name: Rechunk Image
         id: rechunk
-        uses: hhd-dev/rechunk@v0.8.6
+        uses: hhd-dev/rechunk@v1.0.1
         with:
           ref: "raw-img"
           prev-ref: "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.generate_tags.outputs.default_tag }}"

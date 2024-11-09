@@ -53,10 +53,10 @@ jobs:
         shell: bash
         run: |
           cd /usr/bin && \
-              curl -sSLO \
+              sudo curl -sSLO \
                   https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz && \
-              tar -zxvf just-1.36.0-x86_64-unknown-linux-musl.tar.gz just && \
-              rm -f just-1.36.0-x86_64-unknown-linux-musl.tar.gz
+              sudo tar -zxvf just-1.36.0-x86_64-unknown-linux-musl.tar.gz just && \
+              sudo rm -f just-1.36.0-x86_64-unknown-linux-musl.tar.gz
 
       - name: Get Source Image Info
         id: source_info

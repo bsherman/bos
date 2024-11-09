@@ -1,7 +1,12 @@
 name: bOS Build Server
 on:
-    workflow_call:
-    workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+  workflow_call:
+  workflow_dispatch:
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -21,65 +26,64 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - stable-zfs
-          - stable-nvidia-zfs
+          - ucore-minimal
+          - ucore
+          - ucore-hci
+        tag:
+          - stable
+          - testing
+        flavor:
+          - main
+          - nvidia
+        exclude:
+          - image: ucore-minimal
+            tag: testing
+          - image: ucore
+            tag: testing
+          - image: ucore-minimal
+            flavor: nvidia
+          - image: ucore-hci
+            flavor: nvidia
     steps:
-      - name: Build Variables
-        id: labels
-        uses: Wandalen/wretry.action@v3.7.0
-        with:
-          attempt_limit: 3
-          attempt_delay: 15000
-          command: |
-            set -eoux pipefail
-            tag_version=${{ matrix.image }}
-            KERNEL_RELEASE=$(skopeo inspect docker://ghcr.io/ublue-os/ucore-hci:${tag_version} | jq -r '.Labels["ostree.linux"]')
-            upstream_repo=ucore
-            base_image=ucore-hci
-            fedora_version=$(echo $KERNEL_RELEASE | grep -oP 'fc\K[0-9]+')
-            ver=$(skopeo inspect docker://ghcr.io/ublue-os/${base_image}:"$tag_version" | jq -r '.Labels["org.opencontainers.image.version"]')
-            if [ -z "$ver" ] || [ "null" = "$ver" ]; then
-              echo "inspected image version must not be empty or null"
-              exit 1
-            fi
-            echo "version=$ver" >> $GITHUB_ENV
-            echo "tag_version=$tag_version" >> $GITHUB_ENV
-            echo "kernel_release=${KERNEL_RELEASE}" >> $GITHUB_ENV
-            echo "fedora_version=${fedora_version}" >> $GITHUB_ENV
-            echo "upstream_repo=${upstream_repo}" >> $GITHUB_ENV
-            echo "base_image=${base_image}" >> $GITHUB_ENV
-
-      - name: Verify Base Image
-        uses: EyeCantCU/cosign-action/verify@v0.3.0
-        with:
-          containers: ${{ env.base_image }}:${{ env.tag_version }}
-          pubkey: https://raw.githubusercontent.com/ublue-os/${{ env.upstream_repo }}/main/cosign.pub
-          registry: ghcr.io/ublue-os
-
-      - name: Pull Images
-        uses: Wandalen/wretry.action@v3.7.0
-        id: pull
-        with:
-          attempt_limit: 3
-          attempt_delay: 15000
-          command: |
-            set -eoux pipefail
-            sudo podman pull ghcr.io/ublue-os/${{ env.base_image }}:${{ env.tag_version }}
-            sudo podman pull ghcr.io/hhd-dev/rechunk:v1.0.1
-
       - name: Checkout Push to Registry Action
         uses: actions/checkout@v4
+
+      - name: Setup Just
+        id: setup_just
+        shell: bash
+        run: |
+          cd /usr/bin && \
+              curl -sSLO \
+                  https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz && \
+              tar -zxvf just-1.36.0-x86_64-unknown-linux-musl.tar.gz just && \
+              rm -f just-1.36.0-x86_64-unknown-linux-musl.tar.gz
+
+      - name: Get Source Image Info
+        id: source_info
+        shell: bash
+        run: |
+          build_src_dst=($(just gen-build-src-dst "${{matrix.image}}" "${{matrix.tag}}" "${{matrix.flavor}}"))
+          src_img=${build_src_dst[0]}
+          src_tag=${build_src_dst[1]}
+
+          echo "source_image=${src_img}" >> "$GITHUB_ENV"
+          echo "source_tag=${src_tag}" >> "$GITHUB_ENV"
+
+      - name: Verify Source Image
+        uses: EyeCantCU/cosign-action/verify@58722a084c82190b57863002d494c91eabbe9e79 # v0.3.0
+        with:
+          containers: ${{ env.source_image }}:${{ env.source_tag }}
 
       - name: Generate Tags
         id: generate_tags
         shell: bash
         run: |
           TIMESTAMP="$(date +%Y%m%d)"
-          if [[ "${{ env.tag_version }}" =~ nvidia ]]; then
-            tag="ucore-hci-nvidia"
-          else
-            tag="ucore-hci"
-          fi
+
+          # Validate is handled by gen-build-src-dst
+          build_src_dst=($(just gen-build-src-dst "${{matrix.image}}" "${{matrix.tag}}" "${{matrix.flavor}}"))
+          tag=${build_src_dst[3]}
+
           BUILD_TAGS+=("${tag}" "${tag}-${TIMESTAMP}")
           for TAG in "${BUILD_TAGS[@]}"; do
             echo "${TAG}"
@@ -88,17 +92,6 @@ jobs:
           echo "default_tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "build_tags=${BUILD_TAGS[*]}" >> "$GITHUB_OUTPUT"
 
-      - name: Image Metadata
-        uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: |
-            ${{ env.IMAGE_NAME }}
-          labels: |
-            org.opencontainers.image.title=${{ env.IMAGE_STYLED }}
-            org.opencontainers.image.description=${{ env.IMAGE_STYLED }} is my customized image of various ublue projects
-            org.opencontainers.image.version=${{ env.version }}
-
       - name: Maximize Build Space
         uses: ublue-os/remove-unwanted-software@v7
 
@@ -106,30 +99,18 @@ jobs:
         id: build_image
         shell: bash
         run: |
-          sudo buildah build \
-            --format "docker" \
-            --build-arg BASE_IMAGE=${{ env.base_image }} \
-            --build-arg IMAGE=${{ env.image }} \
-            --build-arg TAG_VERSION=${{ env.tag_version }} \
-            --tag raw-img .
+          just build "${{matrix.image}}" "${{matrix.tag}}" "${{matrix.flavor}}"
 
       - name: Remove old Images
         run: |
           set -eoux pipefail
-          sudo podman image rm ghcr.io/ublue-os/${{ env.base_image }}:${{ env.tag_version }}
+          sudo podman image rm ghcr.io/ublue-os/${{ env.source_image }}:${{ env.source_tag }}
 
       - name: Rechunk Image
         id: rechunk
-        uses: hhd-dev/rechunk@v1.0.1
-        with:
-          ref: "raw-img"
-          prev-ref: "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.generate_tags.outputs.default_tag }}"
-          version: "${{ env.version }}"
-          rechunk: "ghcr.io/hhd-dev/rechunk:v1.0.1"
-          labels: |
-            org.opencontainers.image.title=${{ env.IMAGE_STYLED }}
-            org.opencontainers.image.description=${{ env.IMAGE_STYLED }} is my customized image of various ublue projects
-            org.opencontainers.image.version=${{ env.version }}
+        shell: bash
+        run: |
+          just rechunk "${{matrix.image}}" "${{matrix.tag}}" "${{matrix.flavor}}"
 
       - name: Load into Podman and Tag
         shell: bash

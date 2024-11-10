@@ -103,7 +103,7 @@ jobs:
           attempt_delay: 15000
           command: |
             set -eoux pipefail
-            sudo podman pull ghcr.io/ublue-os/${{ env.source_image}}:${{ env.source_tag }}
+            sudo podman pull ghcr.io/ublue-os/${{ env.source_image }}:${{ env.source_tag }}
 
       - name: Build Image
         id: build_image
@@ -121,8 +121,9 @@ jobs:
         shell: bash
         run: |
           set -eoux pipefail
-          IMAGE=$(podman pull ${{ steps.rechunk.outputs.ref }})
-          sudo rm -rf ${{ steps.rechunk.outputs.output }}
+          sudo podman images
+          podman images
+          IMAGE="localhost/${{ env.source_image }}:${{ env.source_tag }}"
           for tag in ${{ steps.generate_tags.outputs.build_tags }}; do
             podman tag $IMAGE ${{ env.IMAGE_NAME }}:$tag
           done

@@ -103,22 +103,19 @@ jobs:
           attempt_delay: 15000
           command: |
             set -eoux pipefail
-            podman pull ghcr.io/ublue-os/${{ env.source_image}}:${{ env.source_tag }}
+            sudo podman pull ghcr.io/ublue-os/${{ env.source_image}}:${{ env.source_tag }}
 
       - name: Build Image
         id: build_image
         shell: bash
         run: |
-          just build "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
+          sudo just build "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
 
       - name: Rechunk Image
         id: rechunk
         shell: bash
         run: |
-          set -x
-          which machinectl
-          sudo "which machinectl"
-          just rechunk "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
+          sudo just rechunk "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
 
       - name: Load into Podman and Tag
         shell: bash

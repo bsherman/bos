@@ -16,18 +16,20 @@ There's a single image name `bos` with multiple tags. The idea is, *I run **bOS*
 
 Desktop(and laptop) images are built upon [Bluefin](https://github.com/ublue-os/bluefin).
 
-- `bos:bluefin` - a Bluefin stable image with ZFS support
-- `bos:bluefin-nvidia` - a Bluefin stable image with ZFS and Nvidia support
-- `bos:bluefin-dx` - a Bluefin stable image with ZFS support with extra developer features
-- `bos:bluefin-dx-nvidia` - a Bluefin stable image with ZFS and Nvidia support with extra developer features
+- `bos:bluefin` - a Bluefin stable-daily image with ZFS support
+- `bos:bluefin-nvidia` - a Bluefin stable-daily image with ZFS and Nvidia support
+- `bos:bluefin-dx` - a Bluefin stable-daily image with ZFS support and extra developer features
+- `bos:bluefin-dx-nvidia` - a Bluefin stable-daily image with ZFS and Nvidia support and extra developer features
 
 ### Servers
 
 Server images are built upon [uCore](https://github.com/ublue-os/ucore).
 
-- `bos:ucore` - a uCore HCI stable image with ZFS support
-- `bos:ucore-nvidia` - a uCore HCI stable image with ZFS and Nvidia support
-
+- `bos:ucore` - a uCore stable image with ZFS support
+- `bos:ucore-nvidia` - a uCore stable image with ZFS and Nvidia support
+- `bos:ucore-hci` - a uCore HCI stable image with ZFS support (adds hypervisor to uCore)
+- `bos:ucore-hci-nvidia` - a uCore HCI stable image with ZFS and Nvidia support (adds hypervisor to uCore)
+- `bos:ucore-minimal` - a uCore minimal stable image (*without* ZFS or Nvidia support)
 
 ## How to Install
 

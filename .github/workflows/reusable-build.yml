@@ -49,8 +49,6 @@ jobs:
             stream: testing
           - image: ucore-minimal
             flavor: nvidia
-          - image: ucore-hci
-            flavor: nvidia
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image }}-${{ matrix.flavor }}-${{ matrix.stream }}
       cancel-in-progress: true

@@ -62,7 +62,7 @@ jobs:
         id: source_info
         shell: bash
         run: |
-          build_src_dst=($(just gen-build-src-dst "${{matrix.image}}" "${{matrix.tag}}" "${{matrix.flavor}}"))
+          build_src_dst=($(just gen-build-src-dst "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"))
           src_img=${build_src_dst[0]}
           src_tag=${build_src_dst[1]}
 
@@ -76,7 +76,7 @@ jobs:
           TIMESTAMP="$(date +%Y%m%d)"
 
           # Validate is handled by gen-build-src-dst
-          build_src_dst=($(just gen-build-src-dst "${{matrix.image}}" "${{matrix.tag}}" "${{matrix.flavor}}"))
+          build_src_dst=($(just gen-build-src-dst "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"))
           tag=${build_src_dst[3]}
 
           BUILD_TAGS+=("${tag}" "${tag}-${TIMESTAMP}")
@@ -103,19 +103,19 @@ jobs:
           attempt_delay: 15000
           command: |
             set -eoux pipefail
-            sudo podman pull ghcr.io/ublue-os/${{ env.base_image }}:${{ env.tag_version }}
+            podman pull ghcr.io/ublue-os/${{ env.source_image}}:${{ env.source_tag }}
 
       - name: Build Image
         id: build_image
         shell: bash
         run: |
-          just build "${{matrix.image}}" "${{matrix.tag}}" "${{matrix.flavor}}"
+          just build "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
 
       - name: Rechunk Image
         id: rechunk
         shell: bash
         run: |
-          just rechunk "${{matrix.image}}" "${{matrix.tag}}" "${{matrix.flavor}}"
+          just rechunk "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
 
       - name: Load into Podman and Tag
         shell: bash

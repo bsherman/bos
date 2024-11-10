@@ -143,7 +143,7 @@ jobs:
             sudo apt update
             sudo apt install sbsigntool curl openssl
           fi
-          TMP=$(podman create rechunked-img bash)
+          TMP=$(sudo podman create rechunked-img bash)
           sudo podman cp $TMP:/usr/lib/modules/${{ env.kernel_release }}/vmlinuz .
           sudo podman rm $TMP
           sbverify --list vmlinuz
@@ -157,7 +157,7 @@ jobs:
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
         run: |
-          echo ${{ secrets.GITHUB_TOKEN }} | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo ${{ secrets.GITHUB_TOKEN }} | sudo podman login ghcr.io -u ${{ github.actor }} --password-stdin
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Lowercase Registry

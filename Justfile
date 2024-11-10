@@ -2,6 +2,7 @@ my_image := "bos"
 my_image_styled := "bOS"
 repo_name := "bos"
 repo_organization := "bsherman"
+rechunker_image := "ghcr.io/hhd-dev/rechunk:v1.0.1"
 images := '(
     [bazzite]="bazzite-gnome"
     [bazzite-deck]="bazzite-deck-gnome"
@@ -210,9 +211,9 @@ build image="bluefin" tag="beta" flavor="main" rechunk="0":
 
     # Labels
     LABELS=()
-    LABELS+=("--label" "org.opencontainers.image.description=This {{ my_image_styled }} is my customized image of ghcr.io/ublue-os/${src_img}:${src_tag}")
-    LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ repo_name }}//README.md")
+    LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ repo_name }}/refs/heads/main/README.md")
     LABELS+=("--label" "org.opencontainers.image.title={{ my_image_styled }}")
+    LABELS+=("--label" "org.opencontainers.image.description=This {{ my_image_styled }} is my customized image of ghcr.io/ublue-os/${src_img}:${src_tag}")
 
     # Build Image
     podman build \
@@ -267,11 +268,10 @@ rechunk image="bluefin" tag="stable" flavor="main":
     MOUNT=$(just sudoif podman mount "${CREF}")
     OUT_NAME="${dst_img}_build"
 
-    ID=$(just sudoif podman images --filter reference=localhost/"${src_img}":${src_tag} --format "'{{ '{{.ID}}' }}'")
-    if [[ -n "$ID" ]]; then
-        just sudoif podman rmi "$ID"
-    fi
+    # Fedora Version
+    fedora_version=$(just sudoif podman inspect $CREF | jq -r '.[].Config.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')
 
+    # Cleanup space needed for Github Action runner lack of space
     ID=$(just sudoif podman images --filter reference=ghcr.io/ublue-os/"${src_img}":${src_tag} --format "'{{ '{{.ID}}' }}'")
     if [[ -n "$ID" ]]; then
         just sudoif podman rmi "$ID"
@@ -284,7 +284,7 @@ rechunk image="bluefin" tag="stable" flavor="main":
         --volume "$MOUNT":/var/tree \
         --env TREE=/var/tree \
         --user 0:0 \
-        ghcr.io/hhd-dev/rechunk:latest \
+        "{{ rechunker_image }}" \
         /sources/rechunk/1_prune.sh
 
     # Run Rechunker's Create
@@ -296,7 +296,7 @@ rechunk image="bluefin" tag="stable" flavor="main":
         --env REPO=/var/ostree/repo \
         --env RESET_TIMESTAMP=1 \
         --user 0:0 \
-        ghcr.io/hhd-dev/rechunk:latest \
+        "{{ rechunker_image }}" \
         /sources/rechunk/2_create.sh
 
     # Cleanup Temp Container Reference
@@ -313,17 +313,14 @@ rechunk image="bluefin" tag="stable" flavor="main":
         --env REPO=/var/ostree/repo \
         --env PREV_REF=ghcr.io/{{ repo_organization }}/"${dst_img}":"${dst_tag}" \
         --env OUT_NAME="$OUT_NAME" \
+        --env LABELS="org.opencontainers.image.title={{ my_image_styled }}$'\n'org.opencontainers.image.version=${fedora_version}-$(date +%Y%m%d-%H:%M:%S)$'\n''io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ repo_name }}/refs/heads/main/README.md'$'\n'" \
+        --env "DESCRIPTION='This {{ my_image_styled }} is my customized image of ghcr.io/ublue-os/${src_img}:${src_tag}'" \
         --env VERSION_FN=/workspace/version.txt \
         --env OUT_REF="oci:$OUT_NAME" \
         --env GIT_DIR="/var/git" \
         --user 0:0 \
-        ghcr.io/hhd-dev/rechunk:latest \
+        "{{ rechunker_image }}" \
         /sources/rechunk/3_chunk.sh
-        #LABELS+=("--label" "org.opencontainers.image.description=This {{ my_image_styled }} is my customized image of ghcr.io/ublue-os/${src_img}:${src_tag}")
-        #LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ repo_name }}//README.md")
-        #LABELS+=("--label" "org.opencontainers.image.title={{ my_image_styled }}")
-        #--env LABELS="org.opencontainers.image.title=${dst_img}$'\n'org.opencontainers.image.version=localbuild-$(date +%Y%m%d-%H:%M:%S)$'\n''io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/bluefin/refs/heads/main/README.md'$'\n''io.artifacthub.package.logo-url=https://avatars.githubusercontent.com/u/120078124?s=200&v=4'$'\n'" \
-        #--env "DESCRIPTION='An interpretation of the Ubuntu spirit built on Fedora technology'" \
 
     # Cleanup
     just sudoif "find ${OUT_NAME} -type d -exec chmod 0755 {} \;" || true
@@ -361,3 +358,20 @@ run image="bluefin" tag="stable" flavor="main":
 
     # Run Container
     podman run -it --rm localhost/"${dst_img}":"${dst_tag}" bash
+
+# Get Fedora Version of an image
+[group('Utility')]
+fedora_version image="bluefin" tag="stable" flavor="main":
+    #!/usr/bin/bash
+    set -eou pipefail
+    just validate {{ image }} {{ tag }} {{ flavor }}
+    if [[ ! -f /tmp/manifest.json ]]; then
+        if [[ "{{ tag }}" =~ stable ]]; then
+            # CoreOS does not uses cosign
+            skopeo inspect --retry-times 3 docker://quay.io/fedora/fedora-coreos:stable > /tmp/manifest.json
+        else
+            skopeo inspect --retry-times 3 docker://ghcr.io/ublue-os/base-main:"{{ tag }}" > /tmp/manifest.json
+        fi
+    fi
+    fedora_version=$(jq -r '.Labels["ostree.linux"]' < /tmp/manifest.json | grep -oP 'fc\K[0-9]+')
+    echo "${fedora_version}"

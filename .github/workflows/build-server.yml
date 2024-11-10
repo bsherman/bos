@@ -68,15 +68,15 @@ jobs:
         shell: bash
         run: |
           build_src_dst=($(just gen-build-src-dst "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"))
-          src_img=${build_src_dst[0]}
-          src_tag=${build_src_dst[1]}
-          dst_img=${build_src_dst[2]}
-          dst_tag=${build_src_dst[3]}
+          source_img=${build_src_dst[0]}
+          source_tag=${build_src_dst[1]}
+          dest_image=${build_src_dst[2]}
+          dest_tag=${build_src_dst[3]}
 
-          echo "source_image=${src_img}" >> "$GITHUB_ENV"
-          echo "source_tag=${src_tag}" >> "$GITHUB_ENV"
-          echo "dest_image=${dst_img}" >> "$GITHUB_ENV"
-          echo "dest_tag=${dst_tag}" >> "$GITHUB_ENV"
+          echo "source_image=${source_image}" >> "$GITHUB_ENV"
+          echo "source_tag=${source_tag}" >> "$GITHUB_ENV"
+          echo "dest_image=${dest_image}" >> "$GITHUB_ENV"
+          echo "dest_tag=${dest_tag}" >> "$GITHUB_ENV"
 
       - name: Generate Tags
         id: generate_tags
@@ -127,9 +127,9 @@ jobs:
         run: |
           set -eoux pipefail
           sudo podman images
-          IMAGE="localhost/${{ env.dst_img }}:${{ env.dst_tag }}"
+          IMAGE="localhost/${{ env.dest_image }}:${{ env.dest_tag }}"
           for tag in ${{ steps.generate_tags.outputs.build_tags }}; do
-            sudo podman tag $IMAGE ${{ env.dst_img }}:$tag
+            sudo podman tag $IMAGE ${{ env.dest_image }}:$tag
           done
           sudo podman tag $IMAGE rechunked-img
           sudo podman images
@@ -177,9 +177,9 @@ jobs:
             set -euox pipefail
 
             for tag in ${{ steps.build_image.outputs.tags }}; do
-              sudo podman push ${{ env.dst_img }}:${tag} ${{ steps.registry_case.outputs.lowercase }}/${{ env.dst_img }}:${tag}
+              sudo podman push ${{ env.dest_image }}:${tag} ${{ steps.registry_case.outputs.lowercase }}/${{ env.dest_image }}:${tag}
             done
-            digest=$(skopeo inspect docker://${{ steps.registry_case.outputs.lowercase }}/${{ env.dst_img }}:${{ env.dst_tag }} --format '{{.Digest}}')
+            digest=$(skopeo inspect docker://${{ steps.registry_case.outputs.lowercase }}/${{ env.dest_image }}:${{ env.dest_tag }} --format '{{.Digest}}')
             echo "digest=${digest}" >> $GITHUB_OUTPUT
 
       - uses: sigstore/cosign-installer@v3.7.0
@@ -188,7 +188,7 @@ jobs:
       - name: Sign Container Image
         if: github.event_name != 'pull_request'
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${{ steps.registry_case.outputs.lowercase }}/${{ env.dst_img }}@${TAGS}
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${{ steps.registry_case.outputs.lowercase }}/${{ env.dest_image }}@${TAGS}
         env:
           TAGS: ${{ steps.push.outputs.outputs && fromJSON(steps.push.outputs.outputs).digest }}
           COSIGN_EXPERIMENTAL: false

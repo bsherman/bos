@@ -103,7 +103,7 @@ jobs:
           attempt_delay: 15000
           command: |
             set -eoux pipefail
-            sudo podman pull ghcr.io/ublue-os/${{ env.base_image }}:${{ env.tag_version }
+            sudo podman pull ghcr.io/ublue-os/${{ env.base_image }}:${{ env.tag_version }}
 
       - name: Build Image
         id: build_image

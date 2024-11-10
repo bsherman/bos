@@ -247,6 +247,9 @@ rechunk image="bluefin" tag="stable" flavor="main":
     dst_img=${build_src_dst[2]}
     dst_tag=${build_src_dst[3]}
 
+    # debugging
+    just sudoif podman images
+
     # Check if image is already built
     ID=$(podman images --filter reference=localhost/"${dst_img}":"${dst_tag}" --format "'{{ '{{.ID}}' }}'")
     if [[ -z "$ID" ]]; then
@@ -257,6 +260,15 @@ rechunk image="bluefin" tag="stable" flavor="main":
     ID=$(just sudoif podman images --filter reference=localhost/"${dst_img}":"${dst_tag}" --format "'{{ '{{.ID}}' }}'")
     if [[ -z "$ID" ]]; then
         just sudoif podman image scp ${UID}@localhost::localhost/"${dst_img}":"${dst_tag}" root@localhost::localhost/"${dst_img}":"${dst_tag}"
+    fi
+
+    ID=$(just sudoif podman images --filter reference=localhost/"${src_img}":${src_tag} --format "'{{ '{{.ID}}' }}'")
+    if [[ -n "$ID" ]]; then
+        just sudoif podman rmi "$ID"
+
+    ID=$(just sudoif podman images --filter reference=ghcr.io/ublue-os/"${src_img}":${src_tag} --format "'{{ '{{.ID}}' }}'")
+    if [[ -n "$ID" ]]; then
+        just sudoif podman rmi "$ID"
     fi
 
     # Prep Container

@@ -324,7 +324,7 @@ rechunk image="bluefin" tag="stable" flavor="main":
         --env PREV_REF=ghcr.io/{{ repo_organization }}/"${dst_img}":"${dst_tag}" \
         --env OUT_NAME="$OUT_NAME" \
         --env LABELS="org.opencontainers.image.title={{ my_image_styled }}$'\n'org.opencontainers.image.version=${fedora_version}-$(date +%Y%m%d-%H:%M:%S)$'\n''io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ repo_name }}/refs/heads/main/README.md'$'\n'" \
-        --env "DESCRIPTION='This {{ my_image_styled }} is {{ repo_organization }}\\'s customized image of ghcr.io/ublue-os/${src_img}:${src_tag}'" \
+        --env "DESCRIPTION='This {{ my_image_styled }} is a {{ repo_organization }} customized version of ghcr.io/ublue-os/${src_img}:${src_tag}'" \
         --env VERSION_FN=/workspace/version.txt \
         --env OUT_REF="oci:$OUT_NAME" \
         --env GIT_DIR="/var/git" \

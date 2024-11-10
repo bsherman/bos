@@ -20,7 +20,7 @@ on:
         value: ${{ jobs.check.outputs.images }}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.image }}-${{ inputs.stream }}-${{ inputs.flavor }}
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.flavor }}
   cancel-in-progress: true
 
 env:
@@ -40,17 +40,17 @@ jobs:
         flavor: ${{ fromJson(inputs.flavors) }}
         exclude:
           - image: bazzite
-            tag: beta
+            stream: beta
           - image: bazzite-deck
-            tag: beta
+            stream: beta
           - image: bazzite
-            tag: testing
+            stream: testing
           - image: bazzite-deck
-            tag: testing
+            stream: testing
           - image: ucore-minimal
-            tag: testing
+            stream: testing
           - image: ucore
-            tag: testing
+            stream: testing
           - image: ucore-minimal
             flavor: nvidia
           - image: ucore-hci

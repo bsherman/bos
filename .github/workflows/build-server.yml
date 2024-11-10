@@ -10,7 +10,6 @@ on:
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
-  IMAGE_NAME: bos
   IMAGE_STYLED: bOS
 
 jobs:
@@ -52,6 +51,12 @@ jobs:
         id: setup_just
         shell: bash
         run: |
+          set -eoux pipefail
+          JUST_VERSION=$(curl -L https://api.github.com/repos/casey/just/releases/latest | jq -r '.tag_name')
+          curl -sSLO https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz
+          sudo tar -zxvf just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz -C /usr/local/bin just
+          rm -f just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz
+
           cd /usr/bin && \
               sudo curl -sSLO \
                   https://github.com/casey/just/releases/download/1.36.0/just-1.36.0-x86_64-unknown-linux-musl.tar.gz && \
@@ -65,26 +70,26 @@ jobs:
           build_src_dst=($(just gen-build-src-dst "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"))
           src_img=${build_src_dst[0]}
           src_tag=${build_src_dst[1]}
+          dst_img=${build_src_dst[2]}
+          dst_tag=${build_src_dst[3]}
 
           echo "source_image=${src_img}" >> "$GITHUB_ENV"
           echo "source_tag=${src_tag}" >> "$GITHUB_ENV"
+          echo "dest_image=${dst_img}" >> "$GITHUB_ENV"
+          echo "dest_tag=${dst_tag}" >> "$GITHUB_ENV"
 
       - name: Generate Tags
         id: generate_tags
         shell: bash
         run: |
           TIMESTAMP="$(date +%Y%m%d)"
-
-          # Validate is handled by gen-build-src-dst
-          build_src_dst=($(just gen-build-src-dst "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"))
-          tag=${build_src_dst[3]}
+          tag=${{ env.dest_tag }}
 
           BUILD_TAGS+=("${tag}" "${tag}-${TIMESTAMP}")
           for TAG in "${BUILD_TAGS[@]}"; do
             echo "${TAG}"
           done
-          echo "image=${tag}" >> "$GITHUB_ENV"
-          echo "default_tag=${tag}" >> "$GITHUB_OUTPUT"
+
           echo "build_tags=${BUILD_TAGS[*]}" >> "$GITHUB_OUTPUT"
 
       - name: Verify Source Image
@@ -122,12 +127,12 @@ jobs:
         run: |
           set -eoux pipefail
           sudo podman images
-          podman images
-          IMAGE="localhost/${{ env.source_image }}:${{ env.source_tag }}"
+          IMAGE="localhost/${{ env.dst_img }}:${{ env.dst_tag }}"
           for tag in ${{ steps.generate_tags.outputs.build_tags }}; do
-            podman tag $IMAGE ${{ env.IMAGE_NAME }}:$tag
+            sudo podman tag $IMAGE ${{ env.dst_img }}:$tag
           done
-          podman tag $IMAGE rechunked-img
+          sudo podman tag $IMAGE rechunked-img
+          sudo podman images
 
       - name: Check Secureboot
         id: secureboot
@@ -139,8 +144,8 @@ jobs:
             sudo apt install sbsigntool curl openssl
           fi
           TMP=$(podman create rechunked-img bash)
-          podman cp $TMP:/usr/lib/modules/${{ env.kernel_release }}/vmlinuz .
-          podman rm $TMP
+          sudo podman cp $TMP:/usr/lib/modules/${{ env.kernel_release }}/vmlinuz .
+          sudo podman rm $TMP
           sbverify --list vmlinuz
           curl --retry 3 -Lo kernel-sign.der https://github.com/ublue-os/kernel-cache/raw/main/certs/public_key.der
           curl --retry 3 -Lo akmods.der https://github.com/ublue-os/kernel-cache/raw/main/certs/public_key_2.der
@@ -149,6 +154,12 @@ jobs:
           sbverify --cert kernel-sign.crt vmlinuz || exit 1
           sbverify --cert akmods.crt vmlinuz || exit 1
 
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - name: Lowercase Registry
         id: registry_case
         uses: ASzc/change-string-case-action@v6
@@ -156,32 +167,21 @@ jobs:
           string: ${{ env.IMAGE_REGISTRY }}
 
       - name: Push to GHCR
-        uses: Wandalen/wretry.action@v3.7.0
         id: push
         if: github.event_name != 'pull_request'
-        env:
-          REGISTRY_USER: ${{ github.actor }}
-          REGISTRY_PASSWORD: ${{ github.token }}
+        uses: Wandalen/wretry.action@v3.7.0
         with:
           action: redhat-actions/push-to-registry@v2
           attempt_limit: 3
           attempt_delay: 15000
-          with: |
-            image: ${{ env.IMAGE_NAME }}
-            tags: ${{ steps.generate_tags.outputs.build_tags }}
-            registry: ${{ steps.registry_case.outputs.lowercase }}
-            username: ${{ env.REGISTRY_USER }}
-            password: ${{ env.REGISTRY_PASSWORD }}
-            extra-args: |
-              --disable-content-trust
+          command: |
+            set -euox pipefail
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        if: github.event_name != 'pull_request'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+            for tag in ${{ steps.build_image.outputs.tags }}; do
+              sudo podman push ${{ env.dst_img }}:${tag} ${{ steps.registry_case.outputs.lowercase }}/${{ env.dst_img }}:${tag}
+            done
+            digest=$(skopeo inspect docker://${{ steps.registry_case.outputs.lowercase }}/${{ env.dst_img }}:${{ env.dst_tag }} --format '{{.Digest}}')
+            echo "digest=${digest}" >> $GITHUB_OUTPUT
 
       - uses: sigstore/cosign-installer@v3.7.0
         if: github.event_name != 'pull_request'
@@ -189,7 +189,7 @@ jobs:
       - name: Sign Container Image
         if: github.event_name != 'pull_request'
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}@${TAGS}
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${{ steps.registry_case.outputs.lowercase }}/${{ env.dst_img }}@${TAGS}
         env:
           TAGS: ${{ steps.push.outputs.outputs && fromJSON(steps.push.outputs.outputs).digest }}
           COSIGN_EXPERIMENTAL: false

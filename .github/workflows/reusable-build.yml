@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ${{ fromJson(inputs.images) }}
+        images: ${{ fromJson(inputs.images) }}
         stream: ["${{ inputs.stream }}"]
         flavor: ["${{ inputs.flavor }}"]
         exclude:

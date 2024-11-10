@@ -37,11 +37,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ${{ fromJson(inputs.brand_name || '["ucore-minimal", "ucore", "ucore-hci"]') }}
+        images: ${{ fromJson(inputs.images || '["ucore-minimal", "ucore", "ucore-hci"]') }}
         flavor:
           - main
           - nvidia
     with:
-      image: ${{ matrix.image }}
+      images: ${{ matrix.images }}
       stream: stable
       flavor: ${{ matrix.flavor }}

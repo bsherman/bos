@@ -38,11 +38,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ${{ fromJson(inputs.brand_name || '["bluefin", "bluefin-dx"]') }}
+        images: ${{ fromJson(inputs.images || '["bluefin", "bluefin-dx"]') }}
         flavor:
           - main
           - nvidia
     with:
-      image: ${{ matrix.image }}
+      images: ${{ matrix.images }}
       stream: stable
       flavor: ${{ matrix.flavor }}

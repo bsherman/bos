@@ -52,7 +52,7 @@ jobs:
           - image: ucore-hci
             flavor: nvidia
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.flavor }}-${{ matrix.image }}-${{ matrix.stream }}
+      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image }}-${{ matrix.flavor }}-${{ matrix.stream }}
       cancel-in-progress: true
     steps:
       - name: Checkout Push to Registry Action

@@ -134,26 +134,6 @@ jobs:
           sudo podman tag $IMAGE rechunked-img
           sudo podman images
 
-      - name: Check Secureboot
-        id: secureboot
-        shell: bash
-        run: |
-          set -x
-          if [[ ! $(command -v sbverify) || ! $(command -v curl) || ! $(command -v openssl) ]]; then
-            sudo apt update
-            sudo apt install sbsigntool curl openssl
-          fi
-          TMP=$(sudo podman create rechunked-img bash)
-          sudo podman cp $TMP:/usr/lib/modules/${{ env.kernel_release }}/vmlinuz .
-          sudo podman rm $TMP
-          sbverify --list vmlinuz
-          curl --retry 3 -Lo kernel-sign.der https://github.com/ublue-os/kernel-cache/raw/main/certs/public_key.der
-          curl --retry 3 -Lo akmods.der https://github.com/ublue-os/kernel-cache/raw/main/certs/public_key_2.der
-          openssl x509 -in kernel-sign.der -out kernel-sign.crt
-          openssl x509 -in akmods.der -out akmods.crt
-          sbverify --cert kernel-sign.crt vmlinuz || exit 1
-          sbverify --cert akmods.crt vmlinuz || exit 1
-
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
         run: |

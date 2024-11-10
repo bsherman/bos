@@ -28,13 +28,13 @@ jobs:
     secrets: inherit
     with:
       images: '["ucore-minimal", "ucore", "ucore-hci"]'
-      stream: stable
-      flavor: '["main", "nvidia"]'
+      streams: '["stable"]'
+      flavors: '["main", "nvidia"]'
   build-server-testing:
     name: Server Testing
     uses: ./.github/workflows/reusable-build.yml
     secrets: inherit
     with:
       images: '["ucore-minimal", "ucore", "ucore-hci"]'
-      stream: testing
-      flavor: '["main", "nvidia"]'
+      streams: '["testing"]'
+      flavors: '["main", "nvidia"]'

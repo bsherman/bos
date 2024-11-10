@@ -79,7 +79,7 @@ jobs:
         id: source_info
         shell: bash
         run: |
-          build_src_dst=($(just gen-build-src-dst "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"))
+          build_src_dst=($(just gen-build-src-dst "${{ matrix.image }}" "${{ matrix.stream }}" "${{ matrix.flavor }}"))
           source_image=${build_src_dst[0]}
           source_tag=${build_src_dst[1]}
           dest_image=${build_src_dst[2]}
@@ -126,13 +126,13 @@ jobs:
         id: build_image
         shell: bash
         run: |
-          sudo just build "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
+          sudo just build "${{ matrix.image }}" "${{ matrix.stream }}" "${{ matrix.flavor }}"
 
       - name: Rechunk Image
         id: rechunk
         shell: bash
         run: |
-          sudo just rechunk "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
+          sudo just rechunk "${{ matrix.image }}" "${{ matrix.stream }}" "${{ matrix.flavor }}"
 
       - name: Load into Podman and Tag
         shell: bash

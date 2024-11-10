@@ -53,16 +53,16 @@ fix:
 clean:
     #!/usr/bin/bash
     set -eoux pipefail
-    find *_build* -exec rm -rf {} \;
     rm -f previous.manifest.json
+    find *_build* -exec rm -rf {} \;
 
 # Sudo Clean
 [group('Utility')]
 sudo-clean:
     #!/usr/bin/bash
     set -eoux pipefail
-    just sudoif "find *_build* -exec rm -rf {} \;"
     just sudoif "rm -f previous.manifest.json"
+    just sudoif "find *_build* -exec rm -rf {} \;"
 
 # Check if valid combo
 [group('Utility')]

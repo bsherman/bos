@@ -6,12 +6,12 @@ on:
         description: "JSON string of images to build, eg '[bluefin, bluefin-dx, bazzite, ucore, ucore-hci]'"
         required: true
         type: string
-      stream:
-        description: "Stream: stable, beta, or testing"
+      streams:
+        description: "JSON string of streams to build, one or all of '[stable, beta, testing]'"
         required: true
         type: string
-      flavor:
-        description: "Flavor: main or nvidia"
+      flavors:
+        description: "JSON string of flavors to build, one or both of '[main, nvidia]'"
         required: true
         type: string
     outputs:
@@ -35,9 +35,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        images: ${{ fromJson(inputs.images) }}
-        stream: ["${{ inputs.stream }}"]
-        flavor: ["${{ inputs.flavor }}"]
+        image: ${{ fromJson(inputs.images) }}
+        stream: ${{ fromJson(inputs.streams) }}
+        flavor: ${{ fromJson(inputs.flavors) }}
         exclude:
           - image: bazzite
             tag: beta

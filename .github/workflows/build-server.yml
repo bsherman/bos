@@ -15,16 +15,6 @@ on:
     - cron: "11 6 * * 1,2,3,4,5,6" # 6:31 UTC Monday-Saturday
   workflow_call:
   workflow_dispatch:
-    inputs:
-      images:
-        description: "Images Build"
-        default: '["ucore-hci"]'
-        type: choice
-        options:
-          - '["ucore-minimal"]'
-          - '["ucore"]'
-          - '["ucore-hci"]'
-          - '["ucore-minimal", "ucore", "ucore-hci"]'
 
 permissions:
   contents: read
@@ -32,18 +22,19 @@ permissions:
   id-token: write
 
 jobs:
-  build-image-server:
-    name: Build Server Images
+  build-server-stable:
+    name: Server Stable
     uses: ./.github/workflows/reusable-build.yml
     secrets: inherit
-    strategy:
-      fail-fast: false
-      matrix:
-        images: ${{ fromJson(inputs.images || '["ucore-minimal", "ucore", "ucore-hci"]') }}
-        flavor:
-          - main
-          - nvidia
     with:
-      images: ${{ matrix.images }}
+      images: '["ucore-minimal", "ucore", "ucore-hci"]'
       stream: stable
-      flavor: ${{ matrix.flavor }}
+      flavor: '["main", "nvidia"]'
+  build-server-testing:
+    name: Server Testing
+    uses: ./.github/workflows/reusable-build.yml
+    secrets: inherit
+    with:
+      images: '["ucore-minimal", "ucore", "ucore-hci"]'
+      stream: testing
+      flavor: '["main", "nvidia"]'

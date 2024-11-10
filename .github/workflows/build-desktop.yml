@@ -15,17 +15,6 @@ on:
     - cron: "31 6 * * 1,2,3,4,5,6" # 6:31 UTC Monday-Saturday
   workflow_call:
   workflow_dispatch:
-    inputs:
-      images:
-        description: "Images Build"
-        default: '["bluefin-dx"]'
-        type: choice
-        options:
-          - '["bluefin"]'
-          - '["bluefin-dx"]'
-          - '["bazzite"]'
-          - '["bazzite-deck"]'
-          - '["bluefin", "bluefin-dx"]'
 
 permissions:
   contents: read
@@ -33,18 +22,19 @@ permissions:
   id-token: write
 
 jobs:
-  build-image-server:
-    name: Build Server Images
+  build-desktop-stable:
+    name: Desktop Stable
     uses: ./.github/workflows/reusable-build.yml
     secrets: inherit
-    strategy:
-      fail-fast: false
-      matrix:
-        images: ${{ fromJson(inputs.images || '["bluefin", "bluefin-dx"]') }}
-        flavor:
-          - main
-          - nvidia
     with:
-      images: ${{ matrix.images }}
-      stream: stable
-      flavor: ${{ matrix.flavor }}
+      images: '["bluefin", "bluefin-dx"]'
+      streams: '["stable"]'
+      flavors: '["main", "nvidia"]'
+  build-desktop-testing:
+    name: Desktop Beta(Testing)
+    uses: ./.github/workflows/reusable-build.yml
+    secrets: inherit
+    with:
+      images: '["bluefin", "bluefin-dx"]'
+      streams: '["beta"]'
+      flavors: '["main", "nvidia"]'

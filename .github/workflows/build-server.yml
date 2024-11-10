@@ -115,6 +115,9 @@ jobs:
         id: rechunk
         shell: bash
         run: |
+          set -x
+          which machinectl
+          sudo "which machinectl"
           just rechunk "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"
 
       - name: Load into Podman and Tag

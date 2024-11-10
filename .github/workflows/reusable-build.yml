@@ -19,10 +19,6 @@ on:
         description: "An array of images built and pushed to the registry"
         value: ${{ jobs.check.outputs.images }}
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.flavor }}
-  cancel-in-progress: true
-
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
   IMAGE_STYLED: bOS
@@ -55,6 +51,9 @@ jobs:
             flavor: nvidia
           - image: ucore-hci
             flavor: nvidia
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.flavor }}-${{ matrix.image }}-${{ matrix.stream }}
+      cancel-in-progress: true
     steps:
       - name: Checkout Push to Registry Action
         uses: actions/checkout@v4

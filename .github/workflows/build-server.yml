@@ -104,6 +104,8 @@ jobs:
       - name: Remove old Images
         run: |
           set -eoux pipefail
+          podman images
+          sudo podman images
           sudo podman image rm ghcr.io/ublue-os/${{ env.source_image }}:${{ env.source_tag }}
 
       - name: Rechunk Image

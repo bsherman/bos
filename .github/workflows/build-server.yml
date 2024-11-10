@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           build_src_dst=($(just gen-build-src-dst "${{ matrix.image }}" "${{ matrix.tag }}" "${{ matrix.flavor }}"))
-          source_img=${build_src_dst[0]}
+          source_image=${build_src_dst[0]}
           source_tag=${build_src_dst[1]}
           dest_image=${build_src_dst[2]}
           dest_tag=${build_src_dst[3]}

@@ -227,12 +227,12 @@ build image="bluefin" tag="beta" flavor="main" rechunk="0":
     fi
 
 # Build Image and Rechunk
-build-rechunk image="bluefin" tag="latest" flavor="main":
+build-rechunk image="bluefin" tag="stable" flavor="main":
     @just build {{ image }} {{ tag }} {{ flavor }} 1
 
 # Rechunk Image
 [private]
-rechunk image="bluefin" tag="latest" flavor="main":
+rechunk image="bluefin" tag="stable" flavor="main":
     #!/usr/bin/bash
     set -eoux pipefail
 
@@ -326,7 +326,7 @@ rechunk image="bluefin" tag="latest" flavor="main":
     podman tag ${IMAGE} localhost/"${dst_img}":"${dst_tag}"
 
 # Run Container
-run image="bluefin" tag="latest" flavor="main":
+run image="bluefin" tag="stable" flavor="main":
     #!/usr/bin/bash
     set -eoux pipefail
     image={{ image }}
@@ -348,180 +348,3 @@ run image="bluefin" tag="latest" flavor="main":
 
     # Run Container
     podman run -it --rm localhost/"${dst_img}":"${dst_tag}" bash
-
-# Build ISO
-build-iso image="bluefin" tag="latest" flavor="main" ghcr="0":
-    #!/usr/bin/bash
-    set -eoux pipefail
-    image={{ image }}
-    tag={{ tag }}
-    flavor={{ flavor }}
-
-    # Validate is handled by gen-build-src-dst
-    build_src_dst=($(just gen-build-src-dst "${image}" "${tag}" "${flavor}"))
-    src_img=${build_src_dst[0]}
-    src_tag=${build_src_dst[1]}
-    dst_img=${build_src_dst[2]}
-    dst_tag=${build_src_dst[3]}
-
-    build_dir="${dst_img}_build"
-    mkdir -p "$build_dir"
-
-    if [[ -f "${build_dir}/${dst_img}.iso" || -f "${build_dir}/${dst_img}.iso-CHECKSUM" ]]; then
-        echo "ERROR - ISO or Checksum already exist. Please mv or rm to build new ISO"
-        exit 1
-    fi
-
-    # Local or Github Build
-    if [[ "{{ ghcr }}" == "1" ]]; then
-        IMAGE_FULL=ghcr.io/{{ repo_organization }}/"${dst_img}":"${dst_tag}"
-        IMAGE_REPO=ghcr.io/{{ repo_organization }}
-        podman pull "${IMAGE_FULL}"
-    else
-        IMAGE_FULL=localhost/"${dst_img}":"${dst_tag}"
-        IMAGE_REPO=localhost
-        ID=$(podman images --filter reference=localhost/"${dst_img}":"${dst_tag}" --format "'{{ '{{.ID}}' }}'")
-        if [[ -z "$ID" ]]; then
-            just build "$image" "$tag" "$flavor"
-        fi
-    fi
-
-    # Load Image into rootful podman
-    if [[ "${UID}" -gt 0 ]]; then
-        just sudoif podman image scp "${UID}"@localhost::"${IMAGE_FULL}" root@localhost::"${IMAGE_FULL}"
-    fi
-
-    # Flatpak list for bluefin/aurora
-    if [[ "${image}" =~ bluefin ]]; then
-        FLATPAK_DIR_SHORTNAME="bluefin_flatpaks"
-    elif [[ "${image}" =~ aurora ]]; then
-        FLATPAK_DIR_SHORTNAME="aurora_flatpaks"
-    fi
-
-    # Generate Flatpak List
-    TEMP_FLATPAK_INSTALL_DIR="$(mktemp -d -p /tmp flatpak-XXXXX)"
-    flatpak_refs=()
-    while IFS= read -r line; do
-        flatpak_refs+=("$line")
-    done < "${FLATPAK_DIR_SHORTNAME}/flatpaks"
-
-    # Add DX Flatpaks if needed
-    if [[ "${image}" =~ dx ]]; then
-        while IFS= read -r line; do
-            flatpak_refs+=("$line")
-        done < "dx_flatpaks/flatpaks"
-    fi
-
-    echo "Flatpak refs: ${flatpak_refs[@]}"
-
-    # Generate Install Script for Flatpaks
-    tee "${TEMP_FLATPAK_INSTALL_DIR}/install-flatpaks.sh"<<EOF
-    mkdir -p /flatpak/flatpak /flatpak/triggers
-    mkdir -p /var/tmp
-    chmod -R 1777 /var/tmp
-    flatpak config --system --set languages "*"
-    flatpak remote-add --system flathub https://flathub.org/repo/flathub.flatpakrepo
-    flatpak install --system -y flathub ${flatpak_refs[@]}
-    ostree refs --repo=\${FLATPAK_SYSTEM_DIR}/repo | grep '^deploy/' | grep -v 'org\.freedesktop\.Platform\.openh264' | sed 's/^deploy\///g' > /output/flatpaks-with-deps
-    EOF
-
-    # Create Flatpak List with dependencies
-    flatpak_list_args=()
-    flatpak_list_args+=("--rm" "--privileged")
-    flatpak_list_args+=("--entrypoint" "/usr/bin/bash")
-    flatpak_list_args+=("--env" "FLATPAK_SYSTEM_DIR=/flatpak/flatpak")
-    flatpak_list_args+=("--env" "FLATPAK_TRIGGERSDIR=/flatpak/triggers")
-    flatpak_list_args+=("--volume" "$(realpath ./${build_dir}):/output")
-    flatpak_list_args+=("--volume" "${TEMP_FLATPAK_INSTALL_DIR}:/temp_flatpak_install_dir")
-    flatpak_list_args+=("${IMAGE_FULL}" /temp_flatpak_install_dir/install-flatpaks.sh)
-
-    if [[ ! -f "${build_dir}/flatpaks-with-deps" ]]; then
-        podman run "${flatpak_list_args[@]}"
-    else
-        echo "WARNING - Reusing previous determined flatpaks-with-deps"
-    fi
-
-    # List Flatpaks with Dependencies
-    cat "${build_dir}/flatpaks-with-deps"
-
-    # Build ISO
-    iso_build_args=()
-    iso_build_args+=("--rm" "--privileged" "--pull=newer")
-    iso_build_args+=(--volume "/var/lib/containers/storage:/var/lib/containers/storage")
-    iso_build_args+=(--volume "${PWD}:/github/workspace/")
-    iso_build_args+=(ghcr.io/jasonn3/build-container-installer:latest)
-    iso_build_args+=(ARCH="x86_64")
-    iso_build_args+=(ENROLLMENT_PASSWORD="universalblue")
-    iso_build_args+=(FLATPAK_REMOTE_REFS_DIR="/github/workspace/${build_dir}")
-    iso_build_args+=(IMAGE_NAME="${dst_img}")
-    iso_build_args+=(IMAGE_REPO="${IMAGE_REPO}")
-    iso_build_args+=(IMAGE_SIGNED="true")
-    iso_build_args+=(IMAGE_SRC="containers-storage:${IMAGE_FULL}")
-    iso_build_args+=(IMAGE_TAG="${dst_tag}")
-    iso_build_args+=(ISO_NAME="/github/workspace/${build_dir}/${dst_img}.iso")
-    iso_build_args+=(SECURE_BOOT_KEY_URL="https://github.com/{{ repo_organization }}/akmods/raw/main/certs/public_key.der")
-    if [[ "${image}" =~ bluefin ]]; then
-        iso_build_args+=(VARIANT="Silverblue")
-    else
-        iso_build_args+=(VARIANT="Kinoite")
-    fi
-    iso_build_args+=(VERSION="$(skopeo inspect containers-storage:${IMAGE_FULL} | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')")
-    iso_build_args+=(WEB_UI="false")
-
-    just sudoif podman run "${iso_build_args[@]}"
-    just sudoif chown "${UID}:${GROUPS}" -R "${PWD}"
-
-# Build ISO using GHCR Image
-build-iso-ghcr image="bluefin" tag="latest" flavor="main":
-    @just build-iso {{ image }} {{ tag }} {{ flavor }} ghcr
-
-# Run ISO
-run-iso image="bluefin" tag="latest" flavor="main":
-    #!/usr/bin/bash
-    set -eoux pipefail
-    image={{ image }}
-    tag={{ tag }}
-    flavor={{ flavor }}
-
-    # Validate is handled by gen-build-src-dst
-    build_src_dst=($(just gen-build-src-dst "${image}" "${tag}" "${flavor}"))
-    src_img=${build_src_dst[0]}
-    src_tag=${build_src_dst[1]}
-    dst_img=${build_src_dst[2]}
-    dst_tag=${build_src_dst[3]}
-
-
-    # Check if ISO Exists
-    if [[ ! -f "${dst_img}_build/${dst_img}.iso" ]]; then
-        just build-iso "$image" "$tag" "$flavor"
-    fi
-
-    # Determine which port to use
-    port=8006;
-    while grep -q :${port} <<< $(ss -tunalp); do
-        port=$(( port + 1 ))
-    done
-    echo "Using Port: ${port}"
-    echo "Connect to http://localhost:${port}"
-    run_args=()
-    run_args+=(--rm --privileged)
-    run_args+=(--pull=newer)
-    run_args+=(--publish "127.0.0.1:${port}:8006")
-    run_args+=(--env "CPU_CORES=4")
-    run_args+=(--env "RAM_SIZE=8G")
-    run_args+=(--env "DISK_SIZE=64G")
-    run_args+=(--env "BOOT_MODE=windows_secure")
-    run_args+=(--env "TPM=Y")
-    run_args+=(--env "GPU=Y")
-    run_args+=(--device=/dev/kvm)
-    run_args+=(--volume "${PWD}/${dst_img}_build/${dst_img}.iso":"/boot.iso")
-    run_args+=(docker.io/qemux/qemu-docker)
-    podman run "${run_args[@]}" &
-    xdg-open http://localhost:${port}
-    fg "%podman"
-
-# Test Changelogs
-changelogs branch="stable":
-    #!/usr/bin/bash
-    set -eoux pipefail
-    python3 ./.github/changelogs.py {{ branch }} ./output.env ./changelog.md --workdir .

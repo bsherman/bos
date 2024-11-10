@@ -262,19 +262,20 @@ rechunk image="bluefin" tag="stable" flavor="main":
         just sudoif podman image scp ${UID}@localhost::localhost/"${dst_img}":"${dst_tag}" root@localhost::localhost/"${dst_img}":"${dst_tag}"
     fi
 
+    # Prep Container
+    CREF=$(just sudoif podman create localhost/"${dst_img}":"${dst_tag}" bash)
+    MOUNT=$(just sudoif podman mount "${CREF}")
+    OUT_NAME="${dst_img}_build"
+
     ID=$(just sudoif podman images --filter reference=localhost/"${src_img}":${src_tag} --format "'{{ '{{.ID}}' }}'")
     if [[ -n "$ID" ]]; then
         just sudoif podman rmi "$ID"
+    fi
 
     ID=$(just sudoif podman images --filter reference=ghcr.io/ublue-os/"${src_img}":${src_tag} --format "'{{ '{{.ID}}' }}'")
     if [[ -n "$ID" ]]; then
         just sudoif podman rmi "$ID"
     fi
-
-    # Prep Container
-    CREF=$(just sudoif podman create localhost/"${dst_img}":"${dst_tag}" bash)
-    MOUNT=$(just sudoif podman mount "${CREF}")
-    OUT_NAME="${dst_img}_build"
 
     # Run Rechunker's Prune
     just sudoif podman run --rm \

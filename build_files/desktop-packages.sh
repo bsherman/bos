@@ -7,6 +7,7 @@ echo "Running desktop packages scripts..."
 
 # ublue staging repo needed for ghostty, etc
 dnf5 -y copr enable ublue-os/staging
+dnf5 -y copr enable bsherman1/rkvm
 
 # common packages installed to desktops
 dnf5 install -y \
@@ -19,12 +20,14 @@ dnf5 install -y \
   ltrace \
   patch \
   pipx \
+  rkvm \
   rsms-inter-fonts \
   strace \
   udica \
   ydotool
 
 dnf5 -y copr disable ublue-os/staging
+dnf5 -y copr disable bsherman1/rkvm
 
 # github direct installs
 /ctx/build_files/github-release-install.sh twpayne/chezmoi x86_64
@@ -38,3 +41,4 @@ ln -s /usr/lib/zed.app/bin/zed /usr/bin/zed
 cp /usr/lib/zed.app/share/applications/zed.desktop /usr/share/applications/dev.zed.Zed.desktop
 sed -i "s@Icon=zed@Icon=/usr/lib/zed.app/share/icons/hicolor/512x512/apps/zed.png@g" /usr/share/applications/dev.zed.Zed.desktop
 sed -i "s@Exec=zed@Exec=/usr/lib/zed.app/libexec/zed-editor@g" /usr/share/applications/dev.zed.Zed.desktop
+

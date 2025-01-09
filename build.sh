@@ -32,7 +32,6 @@ case "${IMAGE}" in
     ;;
 "ucore"*)
     /ctx/build_files/server-changes.sh
-    /ctx/build_files/server-cockpit-zfs.sh
     ;;
 esac
 

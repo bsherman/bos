@@ -1,8 +1,7 @@
-my_image := "bos"
-my_image_styled := "bOS"
+repo_image_name := "bos"
+repo_image_name_styled := "bOS"
 repo_name := "bos"
 repo_organization := "bsherman"
-rechunker_image := "ghcr.io/hhd-dev/rechunk:v1.0.1"
 images := '(
     [bazzite]="bazzite-gnome"
     [bazzite-deck]="bazzite-deck-gnome"
@@ -21,6 +20,10 @@ tags := '(
     [beta]=beta
     [testing]=testing
 )'
+export SUDO_DISPLAY := if `if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then echo true; fi` == "true" { "true" } else { "false" }
+export SUDOIF := if `id -u` == "0" { "" } else { if SUDO_DISPLAY == "true" { "sudo --askpass" } else { "sudo" } }
+export SET_X := if `id -u` == "0" { "1" } else { env('SET_X', '') }
+export PODMAN := if path_exists("/usr/bin/podman") == "true" { env("PODMAN", "/usr/bin/podman") } else { if path_exists("/usr/bin/docker") == "true" { env("PODMAN", "docker") } else { env("PODMAN", "exit 1 ; ") } }
 
 [private]
 default:
@@ -29,7 +32,7 @@ default:
 # Check Just Syntax
 [group('Just')]
 check:
-    #!/usr/bin/bash
+    #!/usr/bin/env bash
     find . -type f -name "*.just" | while read -r file; do
       echo "Checking syntax: $file"
       just --unstable --fmt --check -f $file
@@ -40,7 +43,7 @@ check:
 # Fix Just Syntax
 [group('Just')]
 fix:
-    #!/usr/bin/bash
+    #!/usr/bin/env bash
     find . -type f -name "*.just" | while read -r file; do
       echo "Checking syntax: $file"
       just --unstable --fmt -f $file
@@ -48,27 +51,22 @@ fix:
     echo "Checking syntax: Justfile"
     just --unstable --fmt -f Justfile || { exit 1; }
 
-# Clean Repo
+# Cleanup
 [group('Utility')]
 clean:
-    #!/usr/bin/bash
-    set -eoux pipefail
-    rm -f previous.manifest.json
-    find *_build* -exec rm -rf {} \;
-
-# Sudo Clean
-[group('Utility')]
-sudo-clean:
-    #!/usr/bin/bash
-    set -eoux pipefail
-    just sudoif "rm -f previous.manifest.json"
-    just sudoif "find *_build* -exec rm -rf {} \;"
+    #!/usr/bin/env bash
+    set -euox pipefail
+    touch {{ repo_image_name }}_
+    ${SUDOIF} find {{ repo_image_name }}_* -type d -exec chmod 0755 {} \;
+    ${SUDOIF} find {{ repo_image_name }}_* -type f -exec chmod 0644 {} \;
+    find {{ repo_image_name }}_* -maxdepth 0 -exec rm -rf {} \;
+    rm -f output*.env changelog*.md version.txt previous.manifest.json
 
 # Check if valid combo
 [group('Utility')]
 [private]
 validate image="" tag="" flavor="":
-    #!/usr/bin/bash
+    #!/usr/bin/env bash
     set -eoux pipefail
     declare -A images={{ images }}
     declare -A tags={{ tags }}
@@ -120,7 +118,7 @@ validate image="" tag="" flavor="":
 [group('Utility')]
 [private]
 gen-build-src-dst image="" tag="" flavor="":
-    #!/usr/bin/bash
+    #!/usr/bin/env bash
     set -eou pipefail
     declare -A images={{ images }}
     declare -A tags={{ tags }}
@@ -175,30 +173,12 @@ gen-build-src-dst image="" tag="" flavor="":
     else
         my_tag="${image}${my_tag_flavor}-${tag}"
     fi
-    echo "${source_image} ${source_tag} {{ my_image }} ${my_tag}"
-
-# sudoif bash function
-[group('Utility')]
-[private]
-sudoif command *args:
-    #!/usr/bin/bash
-    function sudoif(){
-        if [[ "${UID}" -eq 0 ]]; then
-            "$@"
-        elif [[ "$(command -v sudo)" && -n "${SSH_ASKPASS:-}" ]] && [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
-            /usr/bin/sudo --askpass "$@" || exit 1
-        elif [[ "$(command -v sudo)" ]]; then
-            /usr/bin/sudo "$@" || exit 1
-        else
-            exit 1
-        fi
-    }
-    sudoif {{ command }} {{ args }}
+    echo "${source_image} ${source_tag} {{ repo_image_name }} ${my_tag}"
 
 # Build Image
 [group('Image')]
 build image="bluefin" tag="stable" flavor="main" rechunk="0":
-    #!/usr/bin/bash
+    #!/usr/bin/env bash
     set -eoux pipefail
     image={{ image }}
     tag={{ tag }}
@@ -220,8 +200,8 @@ build image="bluefin" tag="stable" flavor="main" rechunk="0":
     # Labels
     LABELS=()
     LABELS+=("--label" "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ repo_name }}/refs/heads/main/README.md")
-    LABELS+=("--label" "org.opencontainers.image.title={{ my_image_styled }}")
-    LABELS+=("--label" "org.opencontainers.image.description=This {{ my_image_styled }} is {{ repo_organization }}'s customized image of ghcr.io/ublue-os/${src_img}:${src_tag}")
+    LABELS+=("--label" "org.opencontainers.image.title={{ repo_image_name_styled }}")
+    LABELS+=("--label" "org.opencontainers.image.description={{ repo_image_name_styled }} is {{ repo_organization }}'s customized image of ghcr.io/ublue-os/${src_img}:${src_tag}")
 
     # Build Image
     podman build \
@@ -244,8 +224,8 @@ build-rechunk image="bluefin" tag="stable" flavor="main":
 [group('Image')]
 [private]
 rechunk image="bluefin" tag="stable" flavor="main":
-    #!/usr/bin/bash
-    set -eoux pipefail
+    #!/usr/bin/env bash
+    set ${SET_X:+-x} -eou pipefail
 
     image={{ image }}
     tag={{ tag }}
@@ -259,46 +239,47 @@ rechunk image="bluefin" tag="stable" flavor="main":
     dst_tag=${build_src_dst[3]}
 
     # debugging
-    just sudoif podman images
+    ${SUDOIF} podman images
+
+    # ID of localhost working image
+    ID=$(podman images --filter reference=localhost/"${dst_img}":"${dst_tag}" --format "'{{ '{{.ID}}' }}'")
 
     # Check if image is already built
-    ID=$(podman images --filter reference=localhost/"${dst_img}":"${dst_tag}" --format "'{{ '{{.ID}}' }}'")
     if [[ -z "$ID" ]]; then
         just build "${image}" "${tag}" "${flavor}"
     fi
 
-    # Load into Rootful Podman
-    ID=$(just sudoif podman images --filter reference=localhost/"${dst_img}":"${dst_tag}" --format "'{{ '{{.ID}}' }}'")
-    if [[ -z "$ID" ]]; then
-        just sudoif podman image scp ${UID}@localhost::localhost/"${dst_img}":"${dst_tag}" root@localhost::localhost/"${dst_img}":"${dst_tag}"
+    # Load into Rootful Podman, if required
+    if [[ "${UID}" -gt "0" && ! ${PODMAN} =~ docker ]]; then
+        COPYTMP="$(mktemp -p "${PWD}" -d -t podman_scp.XXXXXXXXXX)"
+        ${SUDOIF} TMPDIR=${COPYTMP} ${PODMAN} image scp "${UID}"@localhost::localhost/{{ repo_image_name }}:{{ image }} root@localhost::localhost/{{ repo_image_name }}:{{ image }}
+        rm -rf "${COPYTMP}"
     fi
 
-    # Prep Container
-    CREF=$(just sudoif podman create localhost/"${dst_img}":"${dst_tag}" bash)
-    MOUNT=$(just sudoif podman mount "${CREF}")
+    CREF=$(${SUDOIF} podman create localhost/"${dst_img}":"${dst_tag}" bash)
+    MOUNT=$(${SUDOIF} podman mount "${CREF}")
+    FEDORA_VERSION="$(${SUDOIF} ${PODMAN} inspect $CREF | jq -r '.[]["Config"]["Labels"]["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
     OUT_NAME="${dst_img}_build"
-
-    # Fedora Version
-    fedora_version=$(just sudoif podman inspect $CREF | jq -r '.[].Config.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')
-
-    # Cleanup space needed for Github Action runner lack of space
-    ID=$(just sudoif podman images --filter reference=ghcr.io/ublue-os/"${src_img}":${src_tag} --format "'{{ '{{.ID}}' }}'")
-    if [[ -n "$ID" ]]; then
-        just sudoif podman rmi "$ID"
-    fi
+    VERSION="$(${SUDOIF} ${PODMAN} inspect $CREF | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')"
+    LABELS="
+    ostree.linux=$(${SUDOIF} ${PODMAN} inspect $CREF | jq -r '.[].["Config"]["Labels"]["ostree.linux"]')
+    org.opencontainers.image.title={{ repo_image_name_styled }}
+    org.opencontainers.image.revision=$(git rev-parse HEAD)
+    org.opencontainers.image.description={{ repo_image_name_styled }} is a {{ repo_organization }} customized version of ghcr.io/ublue-os/${src_img}:${src_tag}
+    io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ repo_name }}/refs/heads/main/README.md
+    "
 
     # Run Rechunker's Prune
-    just sudoif podman run --rm \
-        --pull=newer \
+    ${SUDOIF} podman run --rm \
         --security-opt label=disable \
         --volume "$MOUNT":/var/tree \
         --env TREE=/var/tree \
         --user 0:0 \
-        "{{ rechunker_image }}" \
+        "ghcr.io/hhd-dev/rechunk:latest" \
         /sources/rechunk/1_prune.sh
 
     # Run Rechunker's Create
-    just sudoif podman run --rm \
+    ${SUDOIF} podman run --rm \
         --security-opt label=disable \
         --volume "$MOUNT":/var/tree \
         --volume "cache_ostree:/var/ostree" \
@@ -306,15 +287,19 @@ rechunk image="bluefin" tag="stable" flavor="main":
         --env REPO=/var/ostree/repo \
         --env RESET_TIMESTAMP=1 \
         --user 0:0 \
-        "{{ rechunker_image }}" \
+        "ghcr.io/hhd-dev/rechunk:latest" \
         /sources/rechunk/2_create.sh
 
     # Cleanup Temp Container Reference
-    just sudoif podman unmount "$CREF"
-    just sudoif podman rm "$CREF"
+    ${SUDOIF} podman unmount "$CREF"
+    ${SUDOIF} podman rm "$CREF"
+    if [[ "${UID}" -gt "0" ]]; then
+        ${SUDOIF} ${PODMAN} rmi localhost/{{ repo_image_name }}:{{ image }}
+    fi
+    ${PODMAN} rmi localhost/{{ repo_image_name }}:{{ image }}
 
     # Run Rechunker
-    just sudoif podman run --rm \
+    ${SUDOIF} podman run --rm \
         --pull=newer \
         --security-opt label=disable \
         --volume "$PWD:/workspace" \
@@ -323,32 +308,32 @@ rechunk image="bluefin" tag="stable" flavor="main":
         --env REPO=/var/ostree/repo \
         --env PREV_REF=ghcr.io/{{ repo_organization }}/"${dst_img}":"${dst_tag}" \
         --env OUT_NAME="$OUT_NAME" \
-        --env LABELS="org.opencontainers.image.title={{ my_image_styled }}$'\n'org.opencontainers.image.version=${fedora_version}-$(date +%Y%m%d-%H:%M:%S)$'\n''io.artifacthub.package.readme-url=https://raw.githubusercontent.com/{{ repo_organization }}/{{ repo_name }}/refs/heads/main/README.md'$'\n'" \
-        --env "DESCRIPTION='This {{ my_image_styled }} is a {{ repo_organization }} customized version of ghcr.io/ublue-os/${src_img}:${src_tag}'" \
+        --env VERSION="$VERSION" \
         --env VERSION_FN=/workspace/version.txt \
         --env OUT_REF="oci:$OUT_NAME" \
         --env GIT_DIR="/var/git" \
         --user 0:0 \
-        "{{ rechunker_image }}" \
+        "ghcr.io/hhd-dev/rechunk:latest" \
         /sources/rechunk/3_chunk.sh
 
     # Cleanup
-    just sudoif "find ${OUT_NAME} -type d -exec chmod 0755 {} \;" || true
-    just sudoif "find ${OUT_NAME}* -type f -exec chmod 0644 {} \;" || true
-    if [[ "${UID}" -gt 0 ]]; then
-        just sudoif chown ${UID}:${GROUPS} -R "${PWD}"
+    ${SUDOIF} find {{ repo_image_name }}_{{ image }} -type d -exec chmod 0755 {} \; || true
+    ${SUDOIF} find {{ repo_image_name }}_{{ image }}* -type f -exec chmod 0644 {} \; || true
+    if [[ "${UID}" -gt "0" ]]; then
+        ${SUDOIF} chown -R ${UID}:${GROUPS} "${PWD}"
+        # Load Image into Podman Store
+        IMAGE=$(podman pull oci:"${PWD}"/"${OUT_NAME}")
+        podman tag ${IMAGE} localhost/"${dst_img}":"${dst_tag}"
+    elif [[ "${UID}" == "0" && -n "${SUDO_USER:-}" ]]; then
+        ${SUDOIF} chown -R ${SUDO_UID}:${SUDO_GID} "${PWD}"
     fi
-    just sudoif podman volume rm cache_ostree
-    just sudoif podman rmi localhost/"${dst_img}":"${dst_tag}"
 
-    # Load Image into Podman Store
-    IMAGE=$(podman pull oci:"${PWD}"/"${OUT_NAME}")
-    podman tag ${IMAGE} localhost/"${dst_img}":"${dst_tag}"
+    ${SUDOIF} ${PODMAN} volume rm cache_ostree
 
 # Run Container
 [group('Image')]
 run image="bluefin" tag="stable" flavor="main":
-    #!/usr/bin/bash
+    #!/usr/bin/env bash
     set -eoux pipefail
     image={{ image }}
     tag={{ tag }}
@@ -373,7 +358,7 @@ run image="bluefin" tag="stable" flavor="main":
 # Get Fedora Version of an image
 [group('Utility')]
 fedora_version image="bluefin" tag="stable" flavor="main":
-    #!/usr/bin/bash
+    #!/usr/bin/env bash
     set -eou pipefail
     just validate {{ image }} {{ tag }} {{ flavor }}
     if [[ ! -f /tmp/manifest.json ]]; then

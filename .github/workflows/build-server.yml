@@ -30,11 +30,11 @@ jobs:
       images: '["ucore-minimal", "ucore", "ucore-hci"]'
       streams: '["stable"]'
       flavors: '["main", "nvidia"]'
-  build-server-testing:
-    name: Server Testing
-    uses: ./.github/workflows/reusable-build.yml
-    secrets: inherit
-    with:
-      images: '["ucore-minimal", "ucore", "ucore-hci"]'
-      streams: '["testing"]'
-      flavors: '["main", "nvidia"]'
+#  build-server-testing:
+#    name: Server Testing
+#    uses: ./.github/workflows/reusable-build.yml
+#    secrets: inherit
+#    with:
+#      images: '["ucore-minimal", "ucore", "ucore-hci"]'
+#      streams: '["testing"]'
+#      flavors: '["main", "nvidia"]'

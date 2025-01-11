@@ -97,7 +97,7 @@ jobs:
           string: ${{ env.IMAGE_REGISTRY }}
 
       - name: Push to GHCR
-        uses: Wandalen/wretry.action@v3.7.3
+        uses: Wandalen/wretry.action@v3.8.0
         id: push
         if: >-
           contains(fromJson('["workflow_dispatch", "merge_group"]'),

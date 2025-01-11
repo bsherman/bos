@@ -1,0 +1,31 @@
+name: Get Images for Build
+description: Get Images for Build
+
+inputs:
+  image_flavor:
+    description: "Types of Image to Build (Bazzite, Desktop, Server)"
+    required: true
+
+outputs:
+  images:
+    description: "List of Images that will be built"
+    value: ${{ steps.images.outputs.images }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get Images for Build
+      id: images
+      shell: bash
+      run: |
+        case "${{ inputs.image_flavor }}" in
+        "Bazzite")
+          images='["bazzite", "bazzite-deck"]'
+        ;;
+        "Desktop")
+          images='["bluefin", "bluefin-nvidia",  "bluefin-dx", "bluefin-dx-nvidia"]'
+        ;;
+        "Server")
+          images='["ucore-minimal", "ucore", "ucore-nvidia", "ucore-hci", "ucore-hci-nvidia"]'
+        esac
+        echo "images=$images" >> "$GITHUB_OUTPUT"

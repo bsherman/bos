@@ -8,7 +8,7 @@ mkdir -p /etc/pki/containers
 mkdir -p /etc/containers/registries.d/
 
 if [ -f /usr/etc/containers/policy.json ]; then
-  cp /usr/etc/containers/policy.json /etc/containers/policy.json
+    cp /usr/etc/containers/policy.json /etc/containers/policy.json
 fi
 
 cat <<<"$(jq '.transports.docker |=. + {

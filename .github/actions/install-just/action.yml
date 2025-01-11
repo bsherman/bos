@@ -1,3 +1,4 @@
+---
 name: Install Just
 description: Install Just from Github Release
 
@@ -6,7 +7,7 @@ runs:
   steps:
     - name: Install Just
       shell: bash
-      run: |
+      run: |-
         set -eoux pipefail
         while [[ "${JUST_VERSION:-}" =~ null || -z "${JUST_VERSION:-}" ]]
         do

@@ -17,7 +17,7 @@ rm -rf /usr/libexec/rpm-ostree
 
 # Install dnf5 if not present
 if [[ "$(rpm -E %fedora)" -lt 41 ]]; then
-    rpm-ostree install --idempotent dnf5 
+    rpm-ostree install --idempotent dnf5
     if [[ ! "${IMAGE}" =~ ucore ]]; then
         dnf5 install -y dnf5-plugins
     fi

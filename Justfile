@@ -566,3 +566,19 @@ merge-changelog:
         "tag": "$tag"
     }
     EOF
+
+lint:
+    # shell
+    /usr/bin/find . -iname "*.sh" -type f -exec shellcheck "{}" ';'
+    # yaml
+    yamllint {{ justfile_dir() }}
+    # just
+    just check
+
+format:
+    # shell
+    /usr/bin/find . -iname "*.sh" -type f -exec shfmt --write "{}" ';'
+    # yaml
+    yamlfmt {{ justfile_dir() }}
+    # just
+    just fix

@@ -1,8 +1,9 @@
+---
 name: bOS Build Server
 on:
   schedule:
-    - cron: "41 6 * * 0" # 6:41 UTC Sunday
-    - cron: "41 6 * * 1,2,3,4,5,6" # 6:41 UTC Monday-Saturday
+    - cron: "41 6 * * 0"  # 6:41 UTC Sunday
+    - cron: "41 6 * * 1,2,3,4,5,6"  # 6:41 UTC Monday-Saturday
   push:
     branches:
       - main

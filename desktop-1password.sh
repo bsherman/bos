@@ -20,7 +20,7 @@ mkdir -p /var/opt # -p just in case it exists
 # for some reason...
 
 # Setup repo
-cat << EOF > /etc/yum.repos.d/1password.repo
+cat <<EOF >/etc/yum.repos.d/1password.repo
 [1password]
 name=1Password Stable Channel
 baseurl=https://downloads.1password.com/linux/rpm/stable/\$basearch

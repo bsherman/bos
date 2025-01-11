@@ -22,8 +22,11 @@ dnf5 install -y \
     pipx \
     rkvm \
     rsms-inter-fonts \
+    shellcheck \
+    shfmt \
     strace \
     udica \
+    yamllint \
     ydotool
 
 dnf5 -y copr disable ublue-os/staging
@@ -31,6 +34,10 @@ dnf5 -y copr disable bsherman1/rkvm
 
 # github direct installs
 /ctx/github-release-install.sh twpayne/chezmoi x86_64
+
+curl -Lo /tmp/yamlfmt.tar.gz \
+    $(/ctx/github-release-url.sh google/yamlfmt Linux_x86_64)
+tar -xvf /tmp/yamlfmt.tar.gz -C /usr/bin/ yamlfmt
 
 # Zed because why not?
 curl -Lo /tmp/zed.tar.gz \

@@ -1,40 +1,35 @@
 name: bOS Build Server
 on:
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "**.md"
+  schedule:
+    - cron: "11 6 * * 0" # 6:31 UTC Sunday
+    - cron: "11 6 * * 1,2,3,4,5,6" # 6:31 UTC Monday-Saturday
   push:
     branches:
       - main
     paths-ignore:
       - "**.md"
-  schedule:
-    - cron: "11 6 * * 0" # 6:31 UTC Sunday
-    - cron: "11 6 * * 1,2,3,4,5,6" # 6:31 UTC Monday-Saturday
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
   workflow_call:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   id-token: write
 
 jobs:
-  build-server-stable:
-    name: Server Stable
-    uses: ./.github/workflows/reusable-build.yml
+  build-image:
+    name: Build Images
+    uses: ./.github/workflows/build-image.yml
     secrets: inherit
+    strategy:
+      fail-fast: false
+      matrix:
+        image_flavor: ["Server"]
     with:
-      images: '["ucore-minimal", "ucore", "ucore-hci"]'
-      streams: '["stable"]'
-      flavors: '["main", "nvidia"]'
-#  build-server-testing:
-#    name: Server Testing
-#    uses: ./.github/workflows/reusable-build.yml
-#    secrets: inherit
-#    with:
-#      images: '["ucore-minimal", "ucore", "ucore-hci"]'
-#      streams: '["testing"]'
-#      flavors: '["main", "nvidia"]'
+      image_flavor: ${{ matrix.image_flavor }}
+

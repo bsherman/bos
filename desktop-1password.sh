@@ -3,7 +3,7 @@
 # Thanks to bri for the inspiration! My script is mostly based on this example:
 # https://github.com/briorg/bluefin/blob/c62c30a04d42fd959ea770722c6b51216b4ec45b/scripts/1password.sh
 
-set -ouex pipefail
+set ${SET_X:+-x} -eou pipefail
 
 echo "Installing 1Password"
 
@@ -71,5 +71,5 @@ EOF
 # No further hack SHOULD be needed since dnf5 does run the script
 # after-install.sh as expected and uses our pre-set groups.
 
-# Clean up the yum repo (updates are baked into new images)
-rm /etc/yum.repos.d/1password.repo -f
+# Disable the yum repo (updates are baked into new images)
+sed -i "s@enabled=1@enabled=0@" /etc/yum.repos.d/1password.repo

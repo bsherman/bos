@@ -1,40 +1,54 @@
-#!/bin/bash
+#!/usr/bin/bash
 
-set -ouex pipefail
+set -eou pipefail
 
-# there is no 'rpm-ostree cliwrap uninstall-from-root', but this is close enough. See:
-# https://github.com/coreos/rpm-ostree/blob/6d2548ddb2bfa8f4e9bafe5c6e717cf9531d8001/rust/src/cliwrap.rs#L25-L32
-if [ -d /usr/libexec/rpm-ostree/wrapped ]; then
-    # binaries which could be created if they did not exist thus may not be in wrapped dir
-    rm -f \
-        /usr/bin/yum \
-        /usr/bin/dnf \
-        /usr/bin/kernel-install
-    # binaries which were wrapped
-    mv -f /usr/libexec/rpm-ostree/wrapped/* /usr/bin
-    rm -fr /usr/libexec/rpm-ostree
-fi
+mkdir -p /var/lib/alternatives
 
-RELEASE="$(rpm -E %fedora)"
-if [ 40 -eq ${RELEASE} ]; then
-    rpm-ostree install --idempotent dnf5 dnf5-plugins
-fi
+#Common
+echo "::group:: ===Remove CLI Wrap==="
+/ctx/remove-cliwrap.sh
+echo "::endgroup::"
 
+# Changes
 case "${IMAGE}" in
-"bluefin"*)
-    /ctx/build_files/desktop-changes.sh
-    /ctx/build_files/desktop-fixups-steam.sh
-    /ctx/build_files/desktop-packages.sh
+"aurora"* | "bluefin"*)
+    echo "::group:: ===Desktop Changes==="
+    /ctx/desktop-changes.sh
+    echo "::endgroup::"
+    echo "::group:: ===Steam Packages==="
+    /ctx/desktop-fixups-steam.sh
+    echo "::endgroup::"
+    echo "::group:: ===Desktop Packages==="
+    /ctx/desktop-packages.sh
+    echo "::endgroup::"
     ;;
 "bazzite"*)
-    /ctx/build_files/desktop-changes.sh
-    /ctx/build_files/desktop-packages.sh
+    echo "::group:: ===Desktop Changes==="
+    /ctx/desktop-changes.sh
+    echo "::endgroup::"
+    echo "::group:: ===Desktop Packages==="
+    /ctx/desktop-packages.sh
+    echo "::endgroup::"
     ;;
 "ucore"*)
-    /ctx/build_files/server-changes.sh
+    echo "::group:: ===Server Changes==="
+    /ctx/server-changes.sh
+    echo "::endgroup::"
     ;;
 esac
 
-/ctx/build_files/server-packages.sh
-/ctx/build_files/branding.sh
-/ctx/build_files/signing.sh
+# Common
+echo "::group:: ===Server Packages==="
+/ctx/server-packages.sh
+echo "::endgroup::"
+echo "::group:: ===Branding Changes==="
+/ctx/branding.sh
+echo "::endgroup::"
+echo "::group:: ===Container Signing==="
+/ctx/signing.sh
+echo "::endgroup::"
+
+# Clean Up
+echo "::group:: ===Cleanup==="
+/ctx/cleanup.sh
+echo "::endgroup::"

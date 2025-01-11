@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-set -eoux pipefail
+set ${SET_X:+-x} -eou pipefail
 
 # Signing
 mkdir -p /etc/containers

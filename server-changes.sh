@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euox pipefail
+set ${SET_X:+-x} -eou pipefail
 
 echo "Tweaking existing server config..."
 

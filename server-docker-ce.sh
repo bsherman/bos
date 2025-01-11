@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euox pipefail
+set ${SET_X:+-x} -eou pipefail
 
 if [[ ${IMAGE} =~ ucore ]]; then
   dnf5 remove -y docker-cli moby-engine

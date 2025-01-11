@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-set -euox pipefail
+set ${SET_X:+-x} -eou pipefail
 
 echo "Running desktop packages scripts..."
-/ctx/build_files/desktop-1password.sh
+/ctx/desktop-1password.sh
 
 # ublue staging repo needed for ghostty, etc
 dnf5 -y copr enable ublue-os/staging
@@ -30,7 +30,7 @@ dnf5 -y copr disable ublue-os/staging
 dnf5 -y copr disable bsherman1/rkvm
 
 # github direct installs
-/ctx/build_files/github-release-install.sh twpayne/chezmoi x86_64
+/ctx/github-release-install.sh twpayne/chezmoi x86_64
 
 # Zed because why not?
 curl -Lo /tmp/zed.tar.gz \

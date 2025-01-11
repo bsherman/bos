@@ -1,40 +1,35 @@
 name: bOS Build Desktop
 on:
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "**.md"
+  schedule:
+    - cron: "31 6 * * 0" # 6:31 UTC Sunday
+    - cron: "31 6 * * 1,2,3,4,5,6" # 6:31 UTC Monday-Saturday
   push:
     branches:
       - main
     paths-ignore:
       - "**.md"
-  schedule:
-    - cron: "31 6 * * 0" # 6:31 UTC Sunday
-    - cron: "31 6 * * 1,2,3,4,5,6" # 6:31 UTC Monday-Saturday
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
   workflow_call:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   id-token: write
 
 jobs:
-  build-desktop-stable:
-    name: Desktop Stable
-    uses: ./.github/workflows/reusable-build.yml
+  build-image:
+    name: Build Images
+    uses: ./.github/workflows/build-image.yml
     secrets: inherit
+    strategy:
+      fail-fast: false
+      matrix:
+        image_flavor: ["Desktop"]
+        #image_flavor: ["Desktop", "Bazzite"]
     with:
-      images: '["bluefin", "bluefin-dx"]'
-      streams: '["stable"]'
-      flavors: '["main", "nvidia"]'
-#  build-desktop-testing:
-#    name: Desktop Beta(Testing)
-#    uses: ./.github/workflows/reusable-build.yml
-#    secrets: inherit
-#    with:
-#      images: '["bluefin", "bluefin-dx"]'
-#      streams: '["beta"]'
-#      flavors: '["main", "nvidia"]'
+      image_flavor: ${{ matrix.image_flavor }}

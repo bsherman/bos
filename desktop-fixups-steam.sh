@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-set -eoux pipefail
+set ${SET_X:+-x} -eou pipefail
 
 # OBS-VKcapture
 dnf5 -y copr enable kylegospo/obs-vkcapture
@@ -15,8 +15,8 @@ find /etc/yum.repos.d/
 sed -i "0,/enabled=0/{s/enabled=0/enabled=1/}" /etc/yum.repos.d/negativo17-fedora-multimedia.repo
 
 # TODO: pull the following scripts directly from m2os
-/ctx/build_files/build-fix.sh
-/ctx/build_files/steam.sh
+#/ctx/build-fix.sh
+/ctx/steam.sh
 
 sed -i "s@enabled=1@enabled=0@" /etc/yum.repos.d/negativo17-fedora-multimedia.repo
 

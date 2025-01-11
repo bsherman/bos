@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-set -euox pipefail
+set ${SET_X:+-x} -eou pipefail
 
 echo "Running server packages scripts..."
-/ctx/build_files/server-docker-ce.sh
+/ctx/server-docker-ce.sh
 
 # common packages installed to desktops and servers
 dnf5 install -y \

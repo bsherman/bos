@@ -49,8 +49,8 @@ curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sL "${API}" -o "${API_
 RPM_URLS=$(jq \
     -r \
     --arg arch_filter "${ARCH_FILTER}" \
-    '.assets | sort_by(.created_at) | reverse | .[] | select(.name|test($arch_filter)) | select (.name|test("rpm$")) | .browser_download_url') \
-    "${API_JSON}"
+    '.assets | sort_by(.created_at) | reverse | .[] | select(.name|test($arch_filter)) | select (.name|test("rpm$")) | .browser_download_url' \
+    "${API_JSON}")
 for URL in ${RPM_URLS}; do
     # WARNING: in case of multiple matches, this only installs the first matched release
     echo "execute: dnf5 install -y \"${URL}\""

@@ -22,7 +22,6 @@ repos=(
     vscode.repo
 )
 
-
 for repo in "${repos[@]}"; do
     if [[ -f "/etc/yum.repos.d/$repo" ]]; then
         sed -i 's@enabled=1@enabled=0@g' "/etc/yum.repos.d/$repo"
@@ -31,7 +30,7 @@ done
 
 if [[ ! "${IMAGE}" =~ ucore ]]; then
     coprs=()
-    mapfile -t coprs <<< "$(find /etc/yum.repos.d/_copr*.repo)"
+    mapfile -t coprs <<<"$(find /etc/yum.repos.d/_copr*.repo)"
     for copr in "${coprs[@]}"; do
         sed -i 's@enabled=1@enabled=0@g' "$copr"
     done

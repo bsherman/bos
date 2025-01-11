@@ -11,20 +11,20 @@ dnf5 -y copr enable bsherman1/rkvm
 
 # common packages installed to desktops
 dnf5 install -y \
-  gh \
-  ghostty \
-  gnome-shell-extension-no-overview \
-  ibm-plex-fonts-all \
-  libpcap-devel \
-  libretls \
-  ltrace \
-  patch \
-  pipx \
-  rkvm \
-  rsms-inter-fonts \
-  strace \
-  udica \
-  ydotool
+    gh \
+    ghostty \
+    gnome-shell-extension-no-overview \
+    ibm-plex-fonts-all \
+    libpcap-devel \
+    libretls \
+    ltrace \
+    patch \
+    pipx \
+    rkvm \
+    rsms-inter-fonts \
+    strace \
+    udica \
+    ydotool
 
 dnf5 -y copr disable ublue-os/staging
 dnf5 -y copr disable bsherman1/rkvm
@@ -41,4 +41,3 @@ ln -s /usr/lib/zed.app/bin/zed /usr/bin/zed
 cp /usr/lib/zed.app/share/applications/zed.desktop /usr/share/applications/dev.zed.Zed.desktop
 sed -i "s@Icon=zed@Icon=/usr/lib/zed.app/share/icons/hicolor/512x512/apps/zed.png@g" /usr/share/applications/dev.zed.Zed.desktop
 sed -i "s@Exec=zed@Exec=/usr/lib/zed.app/libexec/zed-editor@g" /usr/share/applications/dev.zed.Zed.desktop
-

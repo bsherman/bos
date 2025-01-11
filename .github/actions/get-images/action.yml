@@ -1,3 +1,4 @@
+---
 name: Get Images for Build
 description: Get Images for Build
 
@@ -17,7 +18,7 @@ runs:
     - name: Get Images for Build
       id: images
       shell: bash
-      run: |
+      run: |-
         case "${{ inputs.image_flavor }}" in
         "Bazzite")
           images='["bazzite", "bazzite-deck"]'

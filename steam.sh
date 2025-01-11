@@ -54,7 +54,7 @@ chmod +x /usr/bin/latencyflex
 sed -i "s@enabled=1@enabled=0@" /etc/yum.repos.d/negativo17-fedora-multimedia.repo
 
 # this allows mangohud to read CPU power wattage
-tee /usr/lib/systemd/system/sysfs-read-powercap-intel.service << EOF
+tee /usr/lib/systemd/system/sysfs-read-powercap-intel.service <<EOF
 [Unit]
 Description=Set readable intel cpu power
 After=systemd-udevd.service

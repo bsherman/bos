@@ -3,11 +3,11 @@
 set ${SET_X:+-x} -eou pipefail
 
 if [[ ${IMAGE} =~ ucore ]]; then
-  dnf5 remove -y docker-cli moby-engine
+    dnf5 remove -y docker-cli moby-engine
 fi
 
 # Setup repo
-cat << EOF > /etc/yum.repos.d/docker-ce.repo
+cat <<EOF >/etc/yum.repos.d/docker-ce.repo
 [docker-ce-stable]
 name=Docker CE Stable
 baseurl=https://download.docker.com/linux/fedora/\$releasever/\$basearch/stable
@@ -17,11 +17,11 @@ gpgkey=https://download.docker.com/linux/fedora/gpg
 EOF
 
 dnf5 install -y \
-  containerd.io \
-  docker-buildx-plugin \
-  docker-ce \
-  docker-ce-cli \
-  docker-compose-plugin
+    containerd.io \
+    docker-buildx-plugin \
+    docker-ce \
+    docker-ce-cli \
+    docker-compose-plugin
 
 # prefer to have docker-compose available for legacy muscle-memory
 ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose

@@ -59,7 +59,7 @@ jobs:
           just check
 
       - name: Maximize Build Space
-        uses: ublue-os/remove-unwanted-software@v7
+        uses: ublue-os/remove-unwanted-software@c53356ea63e6ce6627701e186fd8d8ebb4c27d37
 
       - name: Build Image
         shell: bash

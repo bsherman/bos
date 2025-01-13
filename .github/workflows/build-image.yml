@@ -60,6 +60,8 @@ jobs:
 
       - name: Maximize Build Space
         uses: ublue-os/remove-unwanted-software@0b50e9144d79e4208a753bf291e1ac8224bcbc7e
+        with:
+          remove-swapfile: 'true'
 
       - name: Build Image
         shell: bash

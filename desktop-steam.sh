@@ -20,4 +20,7 @@ sed -i "0,/enabled=0/{s/enabled=0/enabled=1/}" /etc/yum.repos.d/negativo17-fedor
 sed -i "s@enabled=1@enabled=0@" /etc/yum.repos.d/negativo17-fedora-multimedia.repo
 
 # disable the Repos we pulled in above
-sed -i "s@enabled=1@enabled=0@" /etc/yum.repos.d/_copr*.repo
+dnf5 -y copr disable kylegospo/obs-vkcapture
+dnf5 -y copr disable kylegospo/bazzite
+dnf5 -y copr disable kylegospo/bazzite-multilib
+dnf5 -y copr disable kylegospo/LatencyFleX

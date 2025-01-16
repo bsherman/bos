@@ -16,7 +16,7 @@ case "${IMAGE}" in
     /ctx/desktop-changes.sh
     echo "::endgroup::"
     echo "::group:: ===Steam Packages==="
-    /ctx/desktop-fixups-steam.sh
+    /ctx/desktop-steam.sh
     echo "::endgroup::"
     echo "::group:: ===Desktop Packages==="
     /ctx/desktop-packages.sh

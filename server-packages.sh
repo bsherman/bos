@@ -10,6 +10,7 @@ dnf5 install -y \
     bc \
     erofs-utils \
     hdparm \
+    intel_gpu_top \
     iotop \
     ipcalc \
     iperf3 \

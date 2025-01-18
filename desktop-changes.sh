@@ -17,6 +17,14 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
         echo "Compiling gschema to include bos setting overrides" &&
         glib-compile-schemas /usr/share/glib-2.0/schemas &>/dev/null
 
-    # remove bluefin provided Inter fonts since we add the RPM
-    rm -rf /usr/share/fonts/inter
+    if [[ ${IMAGE} =~ bluefin ]]; then
+      # remove bluefin provided Inter fonts since we add the RPM
+      rm -vfr /usr/share/fonts/inter
+
+      # disable bluefin provided brew, and remove pre-install
+      systemctl disable brew-setup.service
+      systemctl disable brew-upgrade.timer
+      systemctl disable brew-update.timer
+      rm -vfr /home/linuxbrew
+    fi
 fi

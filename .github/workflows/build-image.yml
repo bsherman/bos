@@ -1,22 +1,19 @@
 ---
 name: Build bOS Images
-on:
+on:  # yamllint disable-line rule:truthy
   workflow_call:
     inputs:
       image_flavor:
         type: string
-
 concurrency:
   group: >-
     ${{ github.workflow }}-${{ github.ref
     || github.run_id }}-${{ inputs.image_flavor }}
   cancel-in-progress: true
-
 env:
   IMAGE_REGISTRY: ghcr.io/bsherman
   IMAGE_NAME: bos
   SET_X: 1
-
 jobs:
   get-images:
     name: Get ${{ inputs.image_flavor }} Images for Build
@@ -26,13 +23,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Get Images for Build
         id: images
         uses: ./.github/actions/get-images
         with:
           image_flavor: ${{ inputs.image_flavor }}
-
   build-image:
     name: Build ${{ inputs.image_flavor }} Images (${{ matrix.image }})
     needs: get-images
@@ -49,35 +44,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
-
       - name: Install Just
         uses: ./.github/actions/install-just
-
-      - name: Check Just Syntax
-        shell: bash
-        run: |
-          just check
-
       - name: Maximize Build Space
-        uses: ublue-os/remove-unwanted-software@0b50e9144d79e4208a753bf291e1ac8224bcbc7e
-        with:
-          remove-swapfile: 'true'
-
+        uses: ublue-os/remove-unwanted-software@v8
       - name: Build Image
         shell: bash
         run: |
           sudo just build ${{ matrix.image }}
-
       - name: Rechunk Image
         shell: bash
         run: |
           sudo just rechunk ${{ matrix.image }}
-
       - name: Load and Tag Image
         shell: bash
         run: |
           just load-image ${{ matrix.image }}
-
       - name: Get Tags
         id: get_tags
         shell: bash
@@ -85,19 +67,16 @@ jobs:
           tags=$(just get-tags ${{ matrix.image }})
           echo "tags=$tags" >> $GITHUB_OUTPUT
           echo $GITHUB_OUTPUT
-
       - name: Check Secureboot
         id: secureboot
         shell: bash
         run: |
           just secureboot ${{ matrix.image }}
-
       - name: Lowercase Registry
         id: registry_case
         uses: ASzc/change-string-case-action@v6
         with:
           string: ${{ env.IMAGE_REGISTRY }}
-
       - name: Push to GHCR
         uses: Wandalen/wretry.action@v3.8.0
         id: push
@@ -119,7 +98,6 @@ jobs:
             password: ${{ env.REGISTRY_PASSWORD }}
             extra-args: |
               --disable-content-trust
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         if: >-
@@ -129,20 +107,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Sign Container Image
         if: >-
           contains(fromJson('["workflow_dispatch", "merge_group"]'),
           github.event_name) || github.event.schedule == '41 6 * * 0'
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}@${TAGS}
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${TAGS}
         env:
           TAGS: >-
             ${{ steps.push.outputs.outputs
             && fromJSON(steps.push.outputs.outputs).digest }}
+          REGISTRY: ${{ steps.registry_case.outputs.lowercase }}
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-
   check:
     name: Check Build ${{ inputs.image_flavor }} Images Successful
     if: ${{ !cancelled() }}
@@ -150,7 +128,9 @@ jobs:
     needs: [build-image]
     steps:
       - name: Exit on failure
-        if: ${{ !success() }}
+        if: >-
+          ${{ contains(fromJson('["failure", "skipped"]'),
+          needs.build-image.result) }}
         shell: bash
         run: exit 1
       - name: Exit

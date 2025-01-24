@@ -15,9 +15,11 @@ case "${IMAGE}" in
     echo "::group:: ===Desktop Changes==="
     /ctx/desktop-changes.sh
     echo "::endgroup::"
+
     echo "::group:: ===Steam Packages==="
     /ctx/desktop-steam.sh
     echo "::endgroup::"
+
     echo "::group:: ===Desktop Packages==="
     /ctx/desktop-packages.sh
     echo "::endgroup::"
@@ -26,6 +28,7 @@ case "${IMAGE}" in
     echo "::group:: ===Desktop Changes==="
     /ctx/desktop-changes.sh
     echo "::endgroup::"
+
     echo "::group:: ===Desktop Packages==="
     /ctx/desktop-packages.sh
     echo "::endgroup::"
@@ -41,9 +44,11 @@ esac
 echo "::group:: ===Server Packages==="
 /ctx/server-packages.sh
 echo "::endgroup::"
+
 echo "::group:: ===Branding Changes==="
 /ctx/branding.sh
 echo "::endgroup::"
+
 echo "::group:: ===Container Signing==="
 /ctx/signing.sh
 echo "::endgroup::"

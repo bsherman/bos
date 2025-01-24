@@ -1,6 +1,6 @@
 ---
 name: bOS Build Server
-on:
+on:  # yamllint disable-line rule:truthy
   schedule:
     - cron: "41 6 * * 0"  # 6:41 UTC Sunday
     - cron: "41 6 * * 1,2,3,4,5,6"  # 6:41 UTC Monday-Saturday
@@ -16,12 +16,10 @@ on:
       - "**.md"
   workflow_call:
   workflow_dispatch:
-
 permissions:
   contents: write
   packages: write
   id-token: write
-
 jobs:
   build-image:
     name: Build Images
@@ -33,4 +31,3 @@ jobs:
         image_flavor: ["Server"]
     with:
       image_flavor: ${{ matrix.image_flavor }}
-

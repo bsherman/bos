@@ -1,17 +1,14 @@
 ---
 name: Get Images for Build
 description: Get Images for Build
-
 inputs:
   image_flavor:
     description: "Types of Image to Build (Bazzite, Desktop, Server)"
     required: true
-
 outputs:
   images:
     description: "List of Images that will be built"
     value: ${{ steps.images.outputs.images }}
-
 runs:
   using: "composite"
   steps:
@@ -19,14 +16,27 @@ runs:
       id: images
       shell: bash
       run: |-
+        # Array to Hold Image Names
+        images=()
+
+        # Add Images
         case "${{ inputs.image_flavor }}" in
         "Bazzite")
-          images='["bazzite", "bazzite-deck"]'
-        ;;
+          images+=("bazzite" "bazzite-deck")
+          ;;
         "Desktop")
-          images='["bluefin", "bluefin-nvidia",  "bluefin-dx", "bluefin-dx-nvidia"]'
-        ;;
+          images+=("bluefin" "bluefin-nvidia")
+          images+=("bluefin-dx" "bluefin-dx-nvidia")
+          ;;
         "Server")
-          images='["ucore-minimal", "ucore", "ucore-nvidia", "ucore-hci", "ucore-hci-nvidia"]'
+          images+=("ucore-minimal" "ucore" "ucore-nvidia")
+          images+=("ucore-hci" "ucore-hci-nvidia")
+          ;;
         esac
+
+        # Make into Json Array
+        images="$(jq --null-input --compact-output '$ARGS.positional' \
+        --args "${images[@]}")"
+
+        # Output
         echo "images=$images" >> "$GITHUB_OUTPUT"

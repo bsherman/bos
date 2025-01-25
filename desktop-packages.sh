@@ -48,6 +48,7 @@ dnf5 install --setopt=install_weak_deps=False -y \
     libvirt-nss \
     lm_sensors \
     ltrace \
+    nerd-fonts \
     patch \
     pipx \
     podman-machine \

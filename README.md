@@ -19,8 +19,8 @@ Desktop(and laptop) images are built upon [Bluefin](https://github.com/ublue-os/
 
 - `bos:bluefin` - a Bluefin stable-daily image with ZFS support
 - `bos:bluefin-nvidia` - a Bluefin stable-daily image with ZFS and Nvidia support
-- `bos:bluefin-dx` - a Bluefin stable-daily image with ZFS support and extra developer features
-- `bos:bluefin-dx-nvidia` - a Bluefin stable-daily image with ZFS and Nvidia support and extra developer features
+- `bos:bluefin-latest` - a Bluefin stable-daily image with ZFS support and extra developer features
+- `bos:bluefin-latest-nvidia` - a Bluefin stable-daily image with ZFS and Nvidia support and extra developer features
 
 ### Servers
 

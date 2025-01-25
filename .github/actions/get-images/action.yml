@@ -26,7 +26,7 @@ runs:
           ;;
         "Desktop")
           images+=("bluefin" "bluefin-nvidia")
-          images+=("bluefin-dx" "bluefin-dx-nvidia")
+          images+=("bluefin-latest" "bluefin-latest-nvidia")
           ;;
         "Server")
           images+=("ucore-minimal" "ucore" "ucore-nvidia")

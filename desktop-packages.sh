@@ -9,28 +9,62 @@ echo "Running desktop packages scripts..."
 dnf5 -y copr enable ublue-os/staging
 dnf5 -y copr enable bsherman1/rkvm
 
+# VSCode because it's still better for a lot of things
+tee /etc/yum.repos.d/vscode.repo <<'EOF'
+[code]
+name=Visual Studio Code
+baseurl=https://packages.microsoft.com/yumrepos/vscode
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+EOF
+
 # common packages installed to desktops
-dnf5 install -y \
+dnf5 install --setopt=install_weak_deps=False -y \
+    adw-gtk3-theme \
+    cascadia-code-fonts \
+    ccache \
+    code \
+    devpod \
+    edk2-ovmf \
+    genisoimage \
     gh \
     ghostty \
     gnome-shell-extension-no-overview \
-    ibm-plex-fonts-all \
+    ibm-plex-mono-fonts \
     libpcap-devel \
     libretls \
+    libvirt \
+    libvirt-nss \
+    lm_sensors \
     ltrace \
     patch \
     pipx \
+    podman-machine \
+    powerline-fonts \
+    qemu-char-spice \
+    qemu-device-display-virtio-gpu \
+    qemu-device-display-virtio-vga \
+    qemu-device-usb-redirect \
+    qemu-img \
+    qemu-kvm \
+    qemu-system-x86-core \
+    qemu-user-binfmt \
+    qemu-user-static \
+    qemu \
     rkvm \
+    rocm-hip \
+    rocm-opencl \
+    rocm-smi \
     rsms-inter-fonts \
     shellcheck \
     shfmt \
     strace \
-    udica \
+    virt-manager \
+    virt-viewer \
+    virt-v2v \
     yamllint \
     ydotool
-
-dnf5 -y copr disable ublue-os/staging
-dnf5 -y copr disable bsherman1/rkvm
 
 # github direct installs
 /ctx/github-release-install.sh twpayne/chezmoi x86_64

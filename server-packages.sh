@@ -8,8 +8,6 @@ echo "Running server packages scripts..."
 # common packages installed to desktops and servers
 dnf5 install -y \
     bc \
-    cockpit-files \
-    cockpit-ostree \
     erofs-utils \
     hdparm \
     intel_gpu_top \
@@ -17,13 +15,16 @@ dnf5 install -y \
     ipcalc \
     iperf3 \
     just \
-    lm_sensors \
     lshw \
     lzip \
     netcat \
+    nicstat \
     nmap \
+    numactl \
+    podman-tui \
     p7zip \
     p7zip-plugins \
     picocom \
     socat \
+    udica \
     unrar

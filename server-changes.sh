@@ -2,9 +2,12 @@
 
 set ${SET_X:+-x} -eou pipefail
 
-echo "Tweaking existing server config..."
-
 if [[ ${IMAGE} =~ ucore ]]; then
+    echo "Tweaking existing server config..."
+
+    # cockpit extensions not in ucore
+    dnf5 install -y cockpit-files cockpit-ostree
+
     # moby-engine packages on uCore conflict with docker-ce
     dnf5 remove -y \
         containerd moby-engine runc

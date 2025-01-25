@@ -7,7 +7,6 @@ echo "Running desktop packages scripts..."
 
 # ublue staging repo needed for ghostty, etc
 dnf5 -y copr enable ublue-os/staging
-dnf5 -y copr enable bsherman1/rkvm
 
 # VSCode because it's still better for a lot of things
 tee /etc/yum.repos.d/vscode.repo <<'EOF'
@@ -52,7 +51,6 @@ dnf5 install --setopt=install_weak_deps=False -y \
     qemu-user-binfmt \
     qemu-user-static \
     qemu \
-    rkvm \
     rocm-hip \
     rocm-opencl \
     rocm-smi \

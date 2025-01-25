@@ -7,7 +7,6 @@ echo "Running desktop packages scripts..."
 
 # ublue staging repo needed for ghostty, etc
 dnf5 -y copr enable ublue-os/staging
-dnf5 -y copr enable bsherman1/rkvm
 
 # common packages installed to desktops
 dnf5 install -y \
@@ -20,7 +19,6 @@ dnf5 install -y \
     ltrace \
     patch \
     pipx \
-    rkvm \
     rsms-inter-fonts \
     shellcheck \
     shfmt \
@@ -30,7 +28,6 @@ dnf5 install -y \
     ydotool
 
 dnf5 -y copr disable ublue-os/staging
-dnf5 -y copr disable bsherman1/rkvm
 
 # github direct installs
 /ctx/github-release-install.sh twpayne/chezmoi x86_64

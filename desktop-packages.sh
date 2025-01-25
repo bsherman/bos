@@ -23,6 +23,15 @@ dnf5 install --setopt=install_weak_deps=False -y \
     adw-gtk3-theme \
     cascadia-code-fonts \
     ccache \
+    cockpit-bridge \
+    cockpit-files \
+    cockpit-machines \
+    cockpit-networkmanager \
+    cockpit-ostree \
+    cockpit-podman \
+    cockpit-selinux \
+    cockpit-storaged \
+    cockpit-system \
     code \
     devpod \
     edk2-ovmf \
@@ -34,6 +43,8 @@ dnf5 install --setopt=install_weak_deps=False -y \
     libpcap-devel \
     libretls \
     libvirt \
+    libvirt-daemon-kvm \
+    libvirt-ssh-proxy \
     libvirt-nss \
     lm_sensors \
     ltrace \
@@ -58,6 +69,9 @@ dnf5 install --setopt=install_weak_deps=False -y \
     shellcheck \
     shfmt \
     strace \
+    udisks2-btrfs \
+    udisks2-lvm2 \
+    virt-install \
     virt-manager \
     virt-viewer \
     virt-v2v \

@@ -8,15 +8,6 @@ echo "Running server packages scripts..."
 # common packages installed to desktops and servers
 dnf5 install -y \
     bc \
-    cockpit-bridge \
-    cockpit-files \
-    cockpit-machines \
-    cockpit-networkmanager \
-    cockpit-ostree \
-    cockpit-podman \
-    cockpit-selinux \
-    cockpit-storaged \
-    cockpit-system \
     erofs-utils \
     hdparm \
     intel_gpu_top \

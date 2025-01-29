@@ -72,10 +72,6 @@ dnf5 install --setopt=install_weak_deps=False -y \
     strace \
     udisks2-btrfs \
     udisks2-lvm2 \
-    virt-install \
-    virt-manager \
-    virt-viewer \
-    virt-v2v \
     yamllint \
     ydotool
 

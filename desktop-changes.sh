@@ -8,6 +8,9 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     # copy system files
     rsync -rvK /ctx/system_files/silverblue/ /
 
+    # remove solaar and input leap, if installed
+    dnf -y remove input-leap solaar
+
     # custom gnome overrides
     mkdir -p /tmp/ublue-schema-test &&
         find /usr/share/glib-2.0/schemas/ -type f ! -name "*.gschema.override" -exec cp {} /tmp/ublue-schema-test/ \; &&

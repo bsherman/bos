@@ -8,6 +8,9 @@ echo "Running desktop packages scripts..."
 # ublue staging repo needed for ghostty, etc
 dnf5 -y copr enable ublue-os/staging
 
+# Sunshine
+dnf5 -y copr enable lizardbyte/beta
+
 # fan profile support
 dnf5 -y copr enable codifryed/CoolerControl
 
@@ -24,7 +27,6 @@ EOF
 # common packages installed to desktops
 dnf5 install --setopt=install_weak_deps=False -y \
     adw-gtk3-theme \
-    cascadia-code-fonts \
     ccache \
     cockpit-bridge \
     cockpit-files \
@@ -77,6 +79,7 @@ dnf5 install --setopt=install_weak_deps=False -y \
     shellcheck \
     shfmt \
     strace \
+    sunshine \
     udisks2-btrfs \
     udisks2-lvm2 \
     yamllint \

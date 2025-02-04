@@ -22,7 +22,8 @@ runs:
         # Add Images
         case "${{ inputs.image_flavor }}" in
         "Bazzite")
-          images+=("bazzite" "bazzite-deck")
+          images+=("bazzite" "bazzite-nvidia")
+          #images+=("bazzite-deck" "bazzite-deck-nvidia")
           ;;
         "Desktop")
           images+=("bluefin" "bluefin-nvidia")

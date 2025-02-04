@@ -8,6 +8,9 @@ echo "Running desktop packages scripts..."
 # ublue staging repo needed for ghostty, etc
 dnf5 -y copr enable ublue-os/staging
 
+# fan profile support
+dnf5 -y copr enable codifryed/CoolerControl
+
 # VSCode because it's still better for a lot of things
 tee /etc/yum.repos.d/vscode.repo <<'EOF'
 [code]
@@ -33,13 +36,16 @@ dnf5 install --setopt=install_weak_deps=False -y \
     cockpit-storaged \
     cockpit-system \
     code \
+    coolercontrol \
     devpod \
     edk2-ovmf \
     genisoimage \
     gh \
     ghostty \
     gnome-shell-extension-no-overview \
+    htop \
     ibm-plex-mono-fonts \
+    jetbrains-mono-fonts-all \
     libpcap-devel \
     libretls \
     libvirt \
@@ -48,6 +54,7 @@ dnf5 install --setopt=install_weak_deps=False -y \
     libvirt-nss \
     lm_sensors \
     ltrace \
+    make \
     nerd-fonts \
     patch \
     pipx \

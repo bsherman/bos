@@ -24,8 +24,3 @@ dnf5 -y copr disable kylegospo/obs-vkcapture
 dnf5 -y copr disable kylegospo/bazzite
 dnf5 -y copr disable kylegospo/bazzite-multilib
 dnf5 -y copr disable kylegospo/LatencyFleX
-
-# fan profile support
-dnf5 -y copr enable codifryed/CoolerControl
-dnf5 -y install coolercontrol
-dnf5 -y copr disable codifryed/CoolerControl

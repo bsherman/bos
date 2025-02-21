@@ -2,8 +2,6 @@
 
 set -eou pipefail
 
-mkdir -p /var/lib/alternatives
-
 #Common
 echo "::group:: ===Remove CLI Wrap==="
 /ctx/remove-cliwrap.sh

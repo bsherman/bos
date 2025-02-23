@@ -9,7 +9,7 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     rsync -rvK /ctx/system_files/silverblue/ /
 
     # remove solaar and input leap, if installed
-    dnf -y remove input-leap solaar
+    dnf5 -y remove input-leap solaar
 
     # custom gnome overrides
     mkdir -p /tmp/ublue-schema-test &&

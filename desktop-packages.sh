@@ -15,7 +15,14 @@ dnf5 -y copr enable lizardbyte/beta
 dnf5 -y copr enable codifryed/CoolerControl
 
 # terra repo for things like ghostty
-dnf5 -y install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
+if [ -f /etc/yum.repos.d/terra.repo ]; then
+    terra_enabled=$(dnf5 repo list --all --json | jq -r '.[] | select(.id=="terra") | .is_enabled')
+    if [[ "${terra_enabled}" == "false" ]]; then
+        dnf5 config-manager setopt terra.enabled=true
+    fi
+else
+    dnf5 -y install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
+fi
 
 # VSCode because it's still better for a lot of things
 tee /etc/yum.repos.d/vscode.repo <<'EOF'

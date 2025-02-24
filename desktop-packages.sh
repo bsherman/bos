@@ -5,7 +5,7 @@ set ${SET_X:+-x} -eou pipefail
 echo "Running desktop packages scripts..."
 /ctx/desktop-1password.sh
 
-# ublue staging repo needed for ghostty, etc
+# ublue staging repo needed for misc packages provided by ublue
 dnf5 -y copr enable ublue-os/staging
 
 # Sunshine
@@ -13,6 +13,9 @@ dnf5 -y copr enable lizardbyte/beta
 
 # fan profile support
 dnf5 -y copr enable codifryed/CoolerControl
+
+# terra repo for things like ghostty
+dnf5 -y install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
 
 # VSCode because it's still better for a lot of things
 tee /etc/yum.repos.d/vscode.repo <<'EOF'

@@ -18,6 +18,7 @@ repos=(
     rpm-fusion-nonfree-nvidia-driver.repo
     rpm-fusion-nonfree-steam.repo
     tailscale.repo
+    terra.repo
     ublue-os-staging-fedora-"$(rpm -E %fedora)".repo
     vscode.repo
 )

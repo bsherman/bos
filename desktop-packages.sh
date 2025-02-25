@@ -64,6 +64,7 @@ $DNF -y install gh --repo gh-cli
 # github direct installs
 /ctx/github-release-install.sh twpayne/chezmoi x86_64
 
+# developer tools which aren't in EPEL, etc, so this installs them in a consistent fashion at least
 curl -Lo /tmp/yamlfmt.tar.gz \
     "$(/ctx/github-release-url.sh google/yamlfmt Linux_x86_64)"
 tar -xvf /tmp/yamlfmt.tar.gz -C /usr/bin/ yamlfmt
@@ -72,7 +73,6 @@ mkdir -p /tmp/shellcheck
 curl -Lo /tmp/shellcheck.tar.xz \
     "$(/ctx/github-release-url.sh koalaman/shellcheck linux.x86_64)"
 tar -xvf /tmp/shellcheck.tar.xz --strip-components=1 -C /tmp/shellcheck
-find /tmp/shellcheck
 mv /tmp/shellcheck/shellcheck /usr/bin/
 
 curl -Lo /usr/bin/shfmt \

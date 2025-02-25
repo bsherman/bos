@@ -6,7 +6,6 @@ set ${SET_X:+-x} -eou pipefail
 repos=(
     charm.repo
     docker-ce.repo
-    epel-multimedia.repo
     fedora-cisco-openh264.repo
     fedora-updates.repo
     fedora-updates-archive.repo

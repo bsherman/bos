@@ -25,9 +25,13 @@ runs:
           images+=("bazzite" "bazzite-nvidia")
           #images+=("bazzite-deck" "bazzite-deck-nvidia")
           ;;
-        "Desktop")
+        "Bluefin")
           images+=("bluefin" "bluefin-nvidia")
           images+=("bluefin-latest" "bluefin-latest-nvidia")
+          ;;
+        "BluefinDX")
+          images+=("bluefin-dx" "bluefin-dx-nvidia")
+          images+=("bluefin-dx-lts" "bluefin-gdx")
           ;;
         "Server")
           images+=("ucore-minimal" "ucore" "ucore-nvidia")

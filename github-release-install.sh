@@ -53,7 +53,7 @@ RPM_URLS=$(jq \
     "${API_JSON}")
 for URL in ${RPM_URLS}; do
     # WARNING: in case of multiple matches, this only installs the first matched release
-    echo "execute: dnf5 install -y \"${URL}\""
-    dnf5 install -y "${URL}"
+    echo "execute: $DNF install -y \"${URL}\""
+    $DNF install -y "${URL}"
     break
 done

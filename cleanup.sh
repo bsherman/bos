@@ -6,6 +6,7 @@ set ${SET_X:+-x} -eou pipefail
 repos=(
     charm.repo
     docker-ce.repo
+    epel-multimedia.repo
     fedora-cisco-openh264.repo
     fedora-updates.repo
     fedora-updates-archive.repo
@@ -37,7 +38,7 @@ if [[ ! "${IMAGE}" =~ ucore ]]; then
     done
 fi
 
-dnf5 clean all
+$DNF clean all
 
 rm -rf /tmp/*
 rm -rf /var/*

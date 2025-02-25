@@ -5,11 +5,22 @@ set ${SET_X:+-x} -eou pipefail
 echo "Tweaking existing desktop config..."
 
 if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
+    # ensure /opt and /usr/local are proper
+    if [[ ! -h /opt ]]; then
+        rm -fr /opt
+	mkdir -p /var/opt
+	ln -s /var/opt /opt
+    fi
+    if [[ ! -h /usr/local ]]; then
+        rm -fr /usr/local
+	ln -s /var/usrlocal /usr/local
+    fi
+
     # copy system files
     rsync -rvK /ctx/system_files/silverblue/ /
 
     # remove solaar and input leap, if installed
-    dnf5 -y remove input-leap solaar
+    $DNF -y remove input-leap solaar
 
     # custom gnome overrides
     mkdir -p /tmp/ublue-schema-test &&
@@ -19,15 +30,4 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
         glib-compile-schemas --strict /tmp/ublue-schema-test || exit 1 &&
         echo "Compiling gschema to include bos setting overrides" &&
         glib-compile-schemas /usr/share/glib-2.0/schemas &>/dev/null
-
-    if [[ ${IMAGE} =~ bluefin ]]; then
-        # remove bluefin provided Inter fonts since we add the RPM
-        rm -vfr /usr/share/fonts/inter
-
-        # disable bluefin provided brew, and remove pre-install
-        systemctl disable brew-setup.service
-        systemctl disable brew-upgrade.timer
-        systemctl disable brew-update.timer
-        rm -vfr /home/linuxbrew
-    fi
 fi

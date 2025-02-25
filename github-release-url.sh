@@ -49,7 +49,7 @@ curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sL "${API}" -o "${API_
 TGZ_URLS=$(jq \
     -r \
     --arg arch_filter "${ARCH_FILTER}" \
-    '.assets | sort_by(.created_at) | reverse | .[] | select(.name|test($arch_filter)) | select (.name|test("gz$")) | .browser_download_url' \
+    '.assets | sort_by(.created_at) | reverse | .[] | select(.name|test($arch_filter)) | select (.name) | .browser_download_url' \
     "${API_JSON}")
 for URL in ${TGZ_URLS}; do
     # WARNING: in case of multiple matches, this only prints the first matched asset

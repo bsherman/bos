@@ -3,14 +3,12 @@
 set ${SET_X:+-x} -eou pipefail
 
 echo "Running server packages scripts..."
-/ctx/server-docker-ce.sh
 
 # common packages installed to desktops and servers
-dnf5 install -y \
+$DNF install -y \
     bc \
     erofs-utils \
     hdparm \
-    intel_gpu_top \
     iotop \
     ipcalc \
     iperf3 \
@@ -18,13 +16,17 @@ dnf5 install -y \
     lshw \
     lzip \
     netcat \
-    nicstat \
     nmap \
     numactl \
+    nvtop \
     podman-tui \
+    socat \
+    udica
+
+if [ -f /etc/fedora-release ]; then
+$DNF install -y \
     p7zip \
     p7zip-plugins \
     picocom \
-    socat \
-    udica \
     unrar
+fi

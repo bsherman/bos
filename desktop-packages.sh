@@ -6,23 +6,7 @@ echo "Running desktop packages scripts..."
 /ctx/desktop-1password.sh
 
 # ublue staging repo needed for misc packages provided by ublue
-dnf5 -y copr enable ublue-os/staging
-
-# Sunshine
-dnf5 -y copr enable lizardbyte/beta
-
-# fan profile support
-dnf5 -y copr enable codifryed/CoolerControl
-
-# terra repo for things like ghostty
-if [ -f /etc/yum.repos.d/terra.repo ]; then
-    terra_enabled=$(dnf5 repo list --all --json | jq -r '.[] | select(.id=="terra") | .is_enabled')
-    if [[ "${terra_enabled}" == "false" ]]; then
-        dnf5 config-manager setopt terra.enabled=true
-    fi
-else
-    dnf5 -y install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
-fi
+$DNF -y copr enable ublue-os/staging
 
 # VSCode because it's still better for a lot of things
 tee /etc/yum.repos.d/vscode.repo <<'EOF'
@@ -35,28 +19,20 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
 
 # common packages installed to desktops
-dnf5 install --setopt=install_weak_deps=False -y \
-    adw-gtk3-theme \
+$DNF install --setopt=install_weak_deps=False -y \
     ccache \
     cockpit-bridge \
     cockpit-files \
     cockpit-machines \
     cockpit-networkmanager \
     cockpit-ostree \
-    cockpit-podman \
     cockpit-selinux \
     cockpit-storaged \
     cockpit-system \
     code \
-    coolercontrol \
-    devpod \
     edk2-ovmf \
-    genisoimage \
-    gh \
-    ghostty \
     gnome-shell-extension-no-overview \
     htop \
-    ibm-plex-mono-fonts \
     jetbrains-mono-fonts-all \
     libpcap-devel \
     libretls \
@@ -70,30 +46,19 @@ dnf5 install --setopt=install_weak_deps=False -y \
     nerd-fonts \
     patch \
     pipx \
-    podman-machine \
     powerline-fonts \
-    qemu-char-spice \
-    qemu-device-display-virtio-gpu \
-    qemu-device-display-virtio-vga \
-    qemu-device-usb-redirect \
     qemu-img \
     qemu-kvm \
-    qemu-system-x86-core \
-    qemu-user-binfmt \
-    qemu-user-static \
-    qemu \
-    rocm-hip \
-    rocm-opencl \
-    rocm-smi \
-    rsms-inter-fonts \
-    shellcheck \
-    shfmt \
     strace \
-    sunshine \
-    udisks2-btrfs \
-    udisks2-lvm2 \
-    yamllint \
-    ydotool
+    xorriso
+
+# github cli
+if [ "dnf5" == "${DNF}" ]; then
+    $DNF config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
+else
+    $DNF config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+fi
+$DNF -y install gh --repo gh-cli
 
 # github direct installs
 /ctx/github-release-install.sh twpayne/chezmoi x86_64
@@ -101,6 +66,17 @@ dnf5 install --setopt=install_weak_deps=False -y \
 curl -Lo /tmp/yamlfmt.tar.gz \
     "$(/ctx/github-release-url.sh google/yamlfmt Linux_x86_64)"
 tar -xvf /tmp/yamlfmt.tar.gz -C /usr/bin/ yamlfmt
+
+mkdir -p /tmp/shellcheck
+curl -Lo /tmp/shellcheck.tar.xz \
+    "$(/ctx/github-release-url.sh koalaman/shellcheck linux.x86_64)"
+tar -xvf /tmp/shellcheck.tar.xz --strip-components=1 -C /tmp/shellcheck
+find /tmp/shellcheck
+mv /tmp/shellcheck/shellcheck /usr/bin/
+
+curl -Lo /usr/bin/shfmt \
+    "$(/ctx/github-release-url.sh mvdan/sh linux_amd64)"
+chmod +x /usr/bin/shfmt
 
 # Zed because why not?
 curl -Lo /tmp/zed.tar.gz \

@@ -10,6 +10,10 @@ images := '(
     [bazzite-deck]="bazzite-deck-gnome"
     [bazzite-deck-nvidia]="bazzite-deck-nvidia-gnome"
     [bluefin]="bluefin"
+    [bluefin-dx]="bluefin-dx"
+    [bluefin-dx-nvidia]="bluefin-dx-nvidia"
+    [bluefin-dx-lts]="bluefin-dx-lts"
+    [bluefin-gdx]="bluefin-gdx"
     [bluefin-nvidia]="bluefin-nvidia"
     [bluefin-latest]="bluefin"
     [bluefin-latest-nvidia]="bluefin-nvidia"
@@ -75,8 +79,17 @@ build image="bluefin":
         exit 1
     fi
     BUILD_ARGS=()
+    DNF=dnf
 
     case "{{ image }}" in
+    "bluefin-gdx")
+        BASE_IMAGE="${check}"
+        TAG_VERSION=lts
+        ;;
+    "bluefin-dx-lts")
+        BASE_IMAGE="bluefin-dx"
+        TAG_VERSION=lts
+        ;;
     "aurora-latest"*|"bluefin-latest"*)
         BASE_IMAGE="${check}"
         TAG_VERSION=latest
@@ -88,6 +101,7 @@ build image="bluefin":
     "bazzite"*)
         BASE_IMAGE="${check}"
         TAG_VERSION=stable
+        DNF=dnf5
         ;;
     "ucore-minimal"*)
         BASE_IMAGE=ucore-minimal
@@ -104,34 +118,39 @@ build image="bluefin":
     esac
 
     case "{{ image }}" in
+    "bluefin-gdx"*|"bluefin-dx-lts"*)
+        just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
+        skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
+        distro_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'el\K[0-9]+')"
+        ;;
     "aurora"*|"bluefin"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
-        fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
+        distro_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
         ;;
     "bazzite"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
-        fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
+        distro_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
         ;;
     "cosmic"*)
         just verify-container bluefin:stable-daily
-        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/bluefin:stable-daily | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container coreos-stable-kernel:"${fedora_version}"
+        distro_version="$(skopeo inspect docker://ghcr.io/ublue-os/bluefin:stable-daily | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
+        just verify-container coreos-stable-kernel:"${distro_version}"
         BASE_IMAGE=base-main
-        TAG_VERSION="${fedora_version}"
+        TAG_VERSION="${distro_version}"
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        skopeo inspect docker://ghcr.io/ublue-os/coreos-stable-kernel:"${fedora_version}" > /tmp/inspect-"{{ image }}".json
+        skopeo inspect docker://ghcr.io/ublue-os/coreos-stable-kernel:"${distro_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     "ucore"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container coreos-stable-kernel:"${fedora_version}"
-        skopeo inspect docker://ghcr.io/ublue-os/coreos-stable-kernel:"${fedora_version}" > /tmp/inspect-"{{ image }}".json
+        distro_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
+        just verify-container coreos-stable-kernel:"${distro_version}"
+        skopeo inspect docker://ghcr.io/ublue-os/coreos-stable-kernel:"${distro_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     esac
 
-    VERSION="{{ image }}-${fedora_version}.$(date +%Y%m%d)"
+    VERSION="{{ image }}-${distro_version}.$(date +%Y%m%d)"
     skopeo list-tags docker://ghcr.io/{{ repo_name }}/{{ repo_image_name }} > /tmp/repotags.json
     if [[ $(jq "any(.Tags[]; contains(\"$VERSION\"))" < /tmp/repotags.json) == "true" ]]; then
         POINT="1"
@@ -153,6 +172,7 @@ build image="bluefin":
     BUILD_ARGS+=("--build-arg" "TAG_VERSION=$TAG_VERSION")
     BUILD_ARGS+=("--build-arg" "SET_X=${SET_X:-}")
     BUILD_ARGS+=("--build-arg" "VERSION=$VERSION")
+    BUILD_ARGS+=("--build-arg" "DNF=$DNF")
     BUILD_ARGS+=("--tag" "localhost/{{ repo_image_name }}:{{ image }}")
     if [[ {{ PODMAN }} =~ docker && "${TERM}" == "dumb" ]]; then
         BUILD_ARGS+=("--progress" "plain")

@@ -26,6 +26,7 @@ $DNF install --setopt=install_weak_deps=False -y \
     cockpit-machines \
     cockpit-networkmanager \
     cockpit-ostree \
+    cockpit-podman \
     cockpit-selinux \
     cockpit-storaged \
     cockpit-system \

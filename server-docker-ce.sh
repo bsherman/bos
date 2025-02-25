@@ -3,7 +3,7 @@
 set ${SET_X:+-x} -eou pipefail
 
 if [[ ${IMAGE} =~ ucore ]]; then
-    dnf5 remove -y docker-cli moby-engine
+    $DNF remove -y docker-cli moby-engine
 fi
 
 # Setup repo
@@ -16,7 +16,7 @@ gpgcheck=1
 gpgkey=https://download.docker.com/linux/fedora/gpg
 EOF
 
-dnf5 install -y \
+$DNF install -y \
     containerd.io \
     docker-buildx-plugin \
     docker-ce \

@@ -14,9 +14,9 @@ case "${IMAGE}" in
     /ctx/desktop-changes.sh
     echo "::endgroup::"
 
-    echo "::group:: ===Steam Packages==="
-    /ctx/desktop-steam.sh
-    echo "::endgroup::"
+    #echo "::group:: ===Steam Packages==="
+    #/ctx/desktop-steam.sh
+    #echo "::endgroup::"
 
     echo "::group:: ===Desktop Packages==="
     /ctx/desktop-packages.sh
@@ -43,9 +43,9 @@ echo "::group:: ===Server Packages==="
 /ctx/server-packages.sh
 echo "::endgroup::"
 
-echo "::group:: ===Branding Changes==="
-/ctx/branding.sh
-echo "::endgroup::"
+#echo "::group:: ===Branding Changes==="
+#/ctx/branding.sh
+#echo "::endgroup::"
 
 echo "::group:: ===Container Signing==="
 /ctx/signing.sh

@@ -37,7 +37,7 @@ if [[ ! "${IMAGE}" =~ ucore ]]; then
     done
 fi
 
-dnf5 clean all
+$DNF clean all
 
 rm -rf /tmp/*
 rm -rf /var/*

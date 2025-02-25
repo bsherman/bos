@@ -67,11 +67,12 @@ jobs:
           tags=$(just get-tags ${{ matrix.image }})
           echo "tags=$tags" >> $GITHUB_OUTPUT
           echo $GITHUB_OUTPUT
-      - name: Check Secureboot
-        id: secureboot
-        shell: bash
-        run: |
-          just secureboot ${{ matrix.image }}
+      # NOTE: disabled secureboot check since bluefin LTS will never pass
+      #- name: Check Secureboot
+      #  id: secureboot
+      #  shell: bash
+      #  run: |
+      #    just secureboot ${{ matrix.image }}
       - name: Lowercase Registry
         id: registry_case
         uses: ASzc/change-string-case-action@v6

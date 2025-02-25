@@ -11,6 +11,7 @@ ARG BASE_IMAGE="bluefin"
 ARG IMAGE="bluefin"
 ARG SET_X=""
 ARG VERSION=""
+ARG DNF=""
 
 RUN --mount=type=bind,from=ctx,src=/,dst=/ctx \
     /ctx/build.sh

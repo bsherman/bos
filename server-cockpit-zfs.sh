@@ -3,7 +3,7 @@
 set -ouex pipefail
 
 # cockpit extensions not in ucore
-dnf5 install -y cockpit-files cockpit-ostree
+$DNF install -y cockpit-files cockpit-ostree
 
 # cockpit plugin for ZFS management
 curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sSL -o /tmp/cockpit-zfs-manager-api.json \

@@ -38,7 +38,7 @@ rpm --import https://downloads.1password.com/linux/keys/1password.asc
 # 'after-install.sh' script runs to cofigure several things, including
 # the creation of a group. Under rpm-ostree, this didn't work quite as
 # expected, thus several steps were done to hack around and fix things.
-# Now with dnf5, there is a problem where 'after-install.sh' creates
+# Now with dnf, there is a problem where 'after-install.sh' creates
 # groups which conflict with default user's GID. This now pre-creates
 # the groups, rather than fixing after RPM installation.
 
@@ -57,7 +57,7 @@ groupadd -g ${GID_ONEPASSWORD} onepassword
 groupadd -g ${GID_ONEPASSWORDCLI} onepassword-cli
 
 # Now let's install the packages.
-dnf5 install -y 1password 1password-cli
+$DNF install -y 1password 1password-cli
 
 # This places the 1Password contents in an image safe location
 mv /var/opt/1Password /usr/lib/1Password # move this over here
@@ -68,7 +68,7 @@ cat >/usr/lib/tmpfiles.d/onepassword.conf <<EOF
 L  /opt/1Password  -  -  -  -  /usr/lib/1Password
 EOF
 
-# No further hack SHOULD be needed since dnf5 does run the script
+# No further hack SHOULD be needed since $DNF does run the script
 # after-install.sh as expected and uses our pre-set groups.
 
 # Disable the yum repo (updates are baked into new images)

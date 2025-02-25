@@ -136,17 +136,17 @@ build image="bluefin":
     "cosmic"*)
         just verify-container bluefin:stable-daily
         distro_version="$(skopeo inspect docker://ghcr.io/ublue-os/bluefin:stable-daily | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container coreos-stable-kernel:"${distro_version}"
+        just verify-container akmods-zfs:coreos-stable-"${distro_version}"
         BASE_IMAGE=base-main
         TAG_VERSION="${distro_version}"
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        skopeo inspect docker://ghcr.io/ublue-os/coreos-stable-kernel:"${distro_version}" > /tmp/inspect-"{{ image }}".json
+        skopeo inspect docker://ghcr.io/ublue-os/akmods-zfs:coreos-stable-"${distro_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     "ucore"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         distro_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container coreos-stable-kernel:"${distro_version}"
-        skopeo inspect docker://ghcr.io/ublue-os/coreos-stable-kernel:"${distro_version}" > /tmp/inspect-"{{ image }}".json
+        just verify-container akmods-zfs:coreos-stable-"${distro_version}"
+        skopeo inspect docker://ghcr.io/ublue-os/akmods-zfs:coreos-stable-"${distro_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     esac
 

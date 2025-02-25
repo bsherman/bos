@@ -31,6 +31,7 @@ $DNF install --setopt=install_weak_deps=False -y \
     cockpit-system \
     code \
     edk2-ovmf \
+    git \
     gnome-shell-extension-no-overview \
     htop \
     jetbrains-mono-fonts-all \

@@ -79,16 +79,18 @@ build image="bluefin":
         exit 1
     fi
     BUILD_ARGS=()
-    DNF=dnf
+    DNF=dnf5
 
     case "{{ image }}" in
     "bluefin-gdx")
         BASE_IMAGE="${check}"
         TAG_VERSION=lts
+        DNF=dnf
         ;;
     "bluefin-dx-lts")
         BASE_IMAGE="bluefin-dx"
         TAG_VERSION=lts
+        DNF=dnf
         ;;
     "aurora-latest"*|"bluefin-latest"*)
         BASE_IMAGE="${check}"
@@ -101,7 +103,6 @@ build image="bluefin":
     "bazzite"*)
         BASE_IMAGE="${check}"
         TAG_VERSION=stable
-        DNF=dnf5
         ;;
     "ucore-minimal"*)
         BASE_IMAGE=ucore-minimal

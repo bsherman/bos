@@ -53,7 +53,7 @@ $DNF install --setopt=install_weak_deps=False -y \
     xorriso
 
 # github cli
-if [ "dnf5" = "${DNF}" ]; then
+if [[ "dnf5" == "${DNF}" ]]; then
     $DNF config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
 else
     $DNF config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo

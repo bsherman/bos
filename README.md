@@ -17,14 +17,12 @@ There's a single image name `bos` with multiple tags. The idea is, *I run **bOS*
 
 Desktop(and laptop) images are built upon [Bluefin](https://github.com/ublue-os/bluefin).
 
-- `bos:bluefin` - a Bluefin stable-daily image with ZFS support
-- `bos:bluefin-nvidia` - a Bluefin stable-daily image with ZFS and Nvidia support
-- `bos:bluefin-latest` - a Bluefin latest image
-- `bos:bluefin-latest-nvidia` - a Bluefin latest image with Nvidia support
-- `bos:bluefin-dx` - a Bluefin DX stable-daily image with ZFS support
-- `bos:bluefin-dx-nvidia` - a Bluefin DX stable-daily image with ZFS and Nvidia support
-- `bos:bluefin-dx-lts` - a Bluefin DX LTS image (based on CentOS)
-- `bos:bluefin-gdx` - a Bluefin GDX image (based on CentOS) with Nvidia support
+- `bos:bluefin` - a Bluefin DX stable-daily image with ZFS support
+- `bos:bluefin-nvidia` - a Bluefin DX stable-daily image with ZFS and Nvidia support
+- `bos:bluefin-latest` - a Bluefin DX latest image
+- `bos:bluefin-latest-nvidia` - a Bluefin DX latest image with Nvidia support
+- `bos:bluefin-lts` - a Bluefin DX LTS image (based on CentOS)
+- `bos:bluefin-gdx` - a Bluefin GDX image (based on CentOS) (GDX is DX LTS with Nvidia support)
 
 ### Servers
 

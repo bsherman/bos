@@ -9,14 +9,12 @@ images := '(
     [bazzite-nvidia]="bazzite-gnome-nvidia"
     [bazzite-deck]="bazzite-deck-gnome"
     [bazzite-deck-nvidia]="bazzite-deck-nvidia-gnome"
-    [bluefin]="bluefin"
-    [bluefin-dx]="bluefin-dx"
-    [bluefin-dx-nvidia]="bluefin-dx-nvidia"
-    [bluefin-dx-lts]="bluefin-dx-lts"
+    [bluefin-latest]="bluefin-dx"
+    [bluefin-latest-nvidia]="bluefin-dx-nvidia"
     [bluefin-gdx]="bluefin-gdx"
-    [bluefin-nvidia]="bluefin-nvidia"
-    [bluefin-latest]="bluefin"
-    [bluefin-latest-nvidia]="bluefin-nvidia"
+    [bluefin-lts]="bluefin-dx"
+    [bluefin]="bluefin-dx"
+    [bluefin-nvidia]="bluefin-dx-nvidia"
     [cosmic]="cosmic"
     [cosmic-nvidia]="cosmic-nvidia"
     [ucore-minimal]="stable"
@@ -82,13 +80,8 @@ build image="bluefin":
     DNF=dnf5
 
     case "{{ image }}" in
-    "bluefin-gdx")
+    "bluefin-gdx"*|"bluefin-lts"*)
         BASE_IMAGE="${check}"
-        TAG_VERSION=lts
-        DNF=dnf
-        ;;
-    "bluefin-dx-lts")
-        BASE_IMAGE="bluefin-dx"
         TAG_VERSION=lts
         DNF=dnf
         ;;
@@ -119,7 +112,7 @@ build image="bluefin":
     esac
 
     case "{{ image }}" in
-    "bluefin-gdx"*|"bluefin-dx-lts"*)
+    "bluefin-gdx"*|"bluefin-lts"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
         distro_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'el\K[0-9]+')"

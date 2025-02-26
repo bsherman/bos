@@ -28,10 +28,7 @@ runs:
         "Bluefin")
           images+=("bluefin" "bluefin-nvidia")
           images+=("bluefin-latest" "bluefin-latest-nvidia")
-          ;;
-        "BluefinDX")
-          images+=("bluefin-dx" "bluefin-dx-nvidia")
-          images+=("bluefin-dx-lts" "bluefin-gdx")
+          images+=("bluefin-gdx" "bluefin-lts")
           ;;
         "Server")
           images+=("ucore-minimal" "ucore" "ucore-nvidia")

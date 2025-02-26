@@ -34,6 +34,7 @@ $DNF install --setopt=install_weak_deps=False -y \
     edk2-ovmf \
     git \
     gnome-shell-extension-no-overview \
+    guestfs-tools \
     htop \
     jetbrains-mono-fonts-all \
     libpcap-devel \

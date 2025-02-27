@@ -5,6 +5,8 @@ set ${SET_X:+-x} -eou pipefail
 if [[ ${IMAGE} =~ ucore ]]; then
     echo "Tweaking existing server config..."
 
+    $DNF -y remove p7zip p7zip-plugins podman-compose
+
     # cockpit extensions not in ucore
     $DNF install -y cockpit-files cockpit-ostree
 

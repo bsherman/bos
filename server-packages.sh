@@ -25,8 +25,11 @@ $DNF install -y \
 
 if [ -f /etc/fedora-release ]; then
 $DNF install -y \
-    p7zip \
-    p7zip-plugins \
     picocom \
     unrar
 fi
+
+# official 7zip until we get Fedora/EPEL packages
+curl -Lo /tmp/7zip.tar.xz \
+    "$(/ctx/github-release-url.sh ip7z/7zip linux-x64)"
+tar -xvf /tmp/7zip.tar.xz -C /usr/bin/ 7zz

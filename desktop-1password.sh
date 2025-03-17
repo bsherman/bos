@@ -26,7 +26,8 @@ name=1Password Stable Channel
 baseurl=https://downloads.1password.com/linux/rpm/stable/\$basearch
 enabled=1
 gpgcheck=1
-repo_gpgcheck=1
+# FIXME: re-enable after https://bugzilla.redhat.com/show_bug.cgi?id=2352958
+repo_gpgcheck=0
 gpgkey=https://downloads.1password.com/linux/keys/1password.asc
 EOF
 

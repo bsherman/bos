@@ -47,7 +47,7 @@ jobs:
       - name: Install Just
         uses: ./.github/actions/install-just
       - name: Maximize Build Space
-        uses: ublue-os/remove-unwanted-software@v8
+        uses: ublue-os/remove-unwanted-software@v9
       - name: Build Image
         shell: bash
         run: |

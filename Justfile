@@ -24,9 +24,9 @@ images := '(
     [ucore-nvidia]="stable-nvidia-zfs"
 )'
 export SUDO_DISPLAY := if `if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then echo true; fi` == "true" { "true" } else { "false" }
-export SUDOIF := if `id -u` == "0" { "" } else { if SUDO_DISPLAY == "true" { "sudo --askpass" } else { "sudo" } }
+export SUDOIF := if `id -u` == "0" { "" } else if SUDO_DISPLAY == "true" { "sudo --askpass" } else { "sudo" }
 export SET_X := if `id -u` == "0" { "1" } else { env('SET_X', '') }
-export PODMAN := if path_exists("/usr/bin/podman") == "true" { env("PODMAN", "/usr/bin/podman") } else { if path_exists("/usr/bin/docker") == "true" { env("PODMAN", "docker") } else { env("PODMAN", "exit 1 ; ") } }
+export PODMAN := if path_exists("/usr/bin/podman") == "true" { env("PODMAN", "/usr/bin/podman") } else if path_exists("/usr/bin/docker") == "true" { env("PODMAN", "docker") } else { env("PODMAN", "exit 1 ; ") }
 
 [private]
 default:
@@ -130,17 +130,17 @@ build image="bluefin":
     "cosmic"*)
         just verify-container bluefin:stable-daily
         fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/bluefin:stable-daily | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container akmods-zfs:coreos-stable-"${fedora_version}"
+        just verify-container akmods:coreos-stable-"${fedora_version}"
         BASE_IMAGE=base-main
         TAG_VERSION="${fedora_version}"
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        skopeo inspect docker://ghcr.io/ublue-os/akmods-zfs:coreos-stable-"${fedora_version}" > /tmp/inspect-"{{ image }}".json
+        skopeo inspect docker://ghcr.io/ublue-os/akmods:coreos-stable-"${fedora_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     "ucore"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container akmods-zfs:coreos-stable-"${fedora_version}"
-        skopeo inspect docker://ghcr.io/ublue-os/akmods-zfs:coreos-stable-"${fedora_version}" > /tmp/inspect-"{{ image }}".json
+        just verify-container akmods:coreos-stable-"${fedora_version}"
+        skopeo inspect docker://ghcr.io/ublue-os/akmods:coreos-stable-"${fedora_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     esac
 
@@ -148,7 +148,7 @@ build image="bluefin":
     skopeo list-tags docker://ghcr.io/{{ repo_name }}/{{ repo_image_name }} > /tmp/repotags.json
     if [[ $(jq "any(.Tags[]; contains(\"$VERSION\"))" < /tmp/repotags.json) == "true" ]]; then
         POINT="1"
-        while eval jq -e "any(.Tags[]; contains(\"$VERSION.$POINT\"))" < /tmp/repotags.json
+        while jq -e "any(.Tags[]; contains(\"$VERSION.$POINT\"))" < /tmp/repotags.json
         do
             (( POINT++ ))
         done
@@ -168,8 +168,13 @@ build image="bluefin":
     BUILD_ARGS+=("--build-arg" "VERSION=$VERSION")
     BUILD_ARGS+=("--build-arg" "DNF=$DNF")
     BUILD_ARGS+=("--tag" "localhost/{{ repo_image_name }}:{{ image }}")
-    if [[ {{ PODMAN }} =~ docker && "${TERM}" == "dumb" ]]; then
-        BUILD_ARGS+=("--progress" "plain")
+    if [[ {{ PODMAN }} =~ podman ]]; then
+        BUILD_ARGS+=("--pull=newer")
+    elif [[ {{ PODMAN }} =~ docker ]]; then
+        BUILD_ARGS+=("--pull=missing")
+        if [[ "${TERM}" == "dumb" ]]; then
+            BUILD_ARGS+=("--progress" "plain")
+        fi
     fi
     echo "::endgroup::"
 
@@ -276,16 +281,12 @@ rechunk image="bluefin":
         {{ SUDOIF }} chown -R "${UID}":"${GROUPS[0]}" "${PWD}"
         just load-image {{ image }}
     elif [[ "${UID}" == "0" && -n "${SUDO_USER:-}" ]]; then
-        if [ -d "/run/user/${SUDO_UID}/just" ]; then
-          {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "/run/user/${SUDO_UID}/just"
-        fi
+        {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "/run/user/${SUDO_UID}/just"
         {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "${PWD}"
     fi
 
     {{ SUDOIF }} {{ PODMAN }} volume rm cache_ostree
     echo "::endgroup::"
-
-# Cleanup perms
 
 # Load Image into Podman and Tag
 [private]
@@ -303,11 +304,6 @@ load-image image="bluefin":
 get-tags image="bluefin":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
-    # extra cleanup in case we didn't run rechunker
-    if [ -d "/run/user/${SUDO_UID}/just" ]; then
-      {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "/run/user/${SUDO_UID}/just"
-    fi
-    {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "${PWD}"
     VERSION=$({{ PODMAN }} inspect {{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
     echo "{{ image }} $VERSION"
 
@@ -384,15 +380,13 @@ build-iso image="bluefin" ghcr="0" clean="0":
     ;;
     esac
     curl -Lo "${FLATPAK_REFS_DIR_ABS}"/flatpaks.txt "${FLATPAK_LIST_URL}"
-        ADDITIONAL_FLATPAKS=(
-            app/com.discordapp.Discord/x86_64/stable
-            app/com.google.Chrome/x86_64/stable
-            app/com.spotify.Client/x86_64/stable
-            app/org.gimp.GIMP/x86_64/stable
-            app/org.keepassxc.KeePassXC/x86_64/stable
-            app/org.libreoffice.LibreOffice/x86_64/stable
-            app/org.prismlauncher.PrismLauncher/x86_64/stable
-        )
+    ADDITIONAL_FLATPAKS=(
+        app/com.discordapp.Discord/x86_64/stable
+        app/com.spotify.Client/x86_64/stable
+        app/org.gimp.GIMP/x86_64/stable
+        app/org.libreoffice.LibreOffice/x86_64/stable
+        app/org.prismlauncher.PrismLauncher/x86_64/stable
+    )
     if [[ "{{ image }}" =~ cosmic ]]; then
         ADDITIONAL_FLATPAKS+=(
             app/org.gnome.World.PikaBackup/x86_64/stable
@@ -400,11 +394,9 @@ build-iso image="bluefin" ghcr="0" clean="0":
             runtime/org.gtk.Gtk3theme.adw-gtk3/x86_64/3.22
             runtime/org.gtk.Gtk3theme.adw-gtk3-dark/x86_64/3.22
         )
-    fi
-    if [[ "{{ image }}" =~ bazzite ]]; then
+    elif [[ "{{ image }}" =~ bazzite ]]; then
         ADDITIONAL_FLATPAKS+=(app/org.gnome.World.PikaBackup/x86_64/stable)
-    fi
-    if [[ "{{ image }}" =~ aurora|bluefin ]]; then
+    elif [[ "{{ image }}" =~ aurora|bluefin ]]; then
         ADDITIONAL_FLATPAKS+=(app/it.mijorus.gearlever/x86_64/stable)
     fi
     FLATPAK_REFS=()
@@ -512,7 +504,6 @@ changelogs branch="stable" urlmd="" handwritten="":
 verify-container container="" registry="ghcr.io/ublue-os" key="":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
-
     # Get Cosign if Needed
     if [[ ! $(command -v cosign) ]]; then
         COSIGN_CONTAINER_ID=$({{ SUDOIF }} {{ PODMAN }} create cgr.dev/chainguard/cosign:latest bash)
@@ -545,7 +536,6 @@ verify-container container="" registry="ghcr.io/ublue-os" key="":
 secureboot image="bluefin":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
-
     # Get the vmlinuz to check
     kernel_release=$({{ PODMAN }} inspect "{{ repo_image_name }}":"{{ image }}" | jq -r '.[].Config.Labels["ostree.linux"]')
     TMP=$({{ PODMAN }} create "{{ repo_image_name }}":"{{ image }}" bash)
@@ -591,7 +581,7 @@ merge-changelog:
     set ${SET_X:+-x} -eou pipefail
     rm -f changelog.md
     cat changelog-stable.md changelog-bazzite.md > changelog.md
-    last_tag=$(git tag --list {{ repo_image_name }}-* | sort -V | tail -1)
+    last_tag=$(git tag --list {{ repo_image_name }}-\* | sort -V | tail -1)
     date_extract="$(echo ${last_tag:-} | grep -oP '{{ repo_image_name }}-\K[0-9]+')"
     date_version="$(echo ${last_tag:-} | grep -oP '\.\K[0-9]+$' || true)"
     if [[ "${date_extract:-}" == "$(date +%Y%m%d)" ]]; then

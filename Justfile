@@ -115,36 +115,36 @@ build image="bluefin":
     "bluefin-gdx"*|"bluefin-lts"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
-        distro_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'el\K[0-9]+')"
+        fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'el\K[0-9]+')"
         ;;
     "aurora"*|"bluefin"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
-        distro_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
+        fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
         ;;
     "bazzite"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
-        distro_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
+        fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
         ;;
     "cosmic"*)
         just verify-container bluefin:stable-daily
-        distro_version="$(skopeo inspect docker://ghcr.io/ublue-os/bluefin:stable-daily | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container akmods-zfs:coreos-stable-"${distro_version}"
+        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/bluefin:stable-daily | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
+        just verify-container akmods-zfs:coreos-stable-"${fedora_version}"
         BASE_IMAGE=base-main
-        TAG_VERSION="${distro_version}"
+        TAG_VERSION="${fedora_version}"
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        skopeo inspect docker://ghcr.io/ublue-os/akmods-zfs:coreos-stable-"${distro_version}" > /tmp/inspect-"{{ image }}".json
+        skopeo inspect docker://ghcr.io/ublue-os/akmods-zfs:coreos-stable-"${fedora_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     "ucore"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        distro_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container akmods-zfs:coreos-stable-"${distro_version}"
-        skopeo inspect docker://ghcr.io/ublue-os/akmods-zfs:coreos-stable-"${distro_version}" > /tmp/inspect-"{{ image }}".json
+        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
+        just verify-container akmods-zfs:coreos-stable-"${fedora_version}"
+        skopeo inspect docker://ghcr.io/ublue-os/akmods-zfs:coreos-stable-"${fedora_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     esac
 
-    VERSION="{{ image }}-${distro_version}.$(date +%Y%m%d)"
+    VERSION="{{ image }}-${fedora_version}.$(date +%Y%m%d)"
     skopeo list-tags docker://ghcr.io/{{ repo_name }}/{{ repo_image_name }} > /tmp/repotags.json
     if [[ $(jq "any(.Tags[]; contains(\"$VERSION\"))" < /tmp/repotags.json) == "true" ]]; then
         POINT="1"

@@ -276,12 +276,16 @@ rechunk image="bluefin":
         {{ SUDOIF }} chown -R "${UID}":"${GROUPS[0]}" "${PWD}"
         just load-image {{ image }}
     elif [[ "${UID}" == "0" && -n "${SUDO_USER:-}" ]]; then
-        {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "/run/user/${SUDO_UID}/just"
+        if [ -d "/run/user/${SUDO_UID}/just" ]; then
+          {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "/run/user/${SUDO_UID}/just"
+        fi
         {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "${PWD}"
     fi
 
     {{ SUDOIF }} {{ PODMAN }} volume rm cache_ostree
     echo "::endgroup::"
+
+# Cleanup perms
 
 # Load Image into Podman and Tag
 [private]
@@ -299,6 +303,11 @@ load-image image="bluefin":
 get-tags image="bluefin":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
+    # extra cleanup in case we didn't run rechunker
+    if [ -d "/run/user/${SUDO_UID}/just" ]; then
+      {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "/run/user/${SUDO_UID}/just"
+    fi
+    {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "${PWD}"
     VERSION=$({{ PODMAN }} inspect {{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
     echo "{{ image }} $VERSION"
 

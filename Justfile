@@ -183,7 +183,7 @@ build image="bluefin":
     echo "::endgroup::"
 
     echo "::group:: Tag Image with Version"
-    {{ PODMAN }} tag ${IMAGE} localhost/{{ repo_image_name }}:${VERSION}
+    {{ PODMAN }} tag localhost/{{ repo_image_name }}:{{ image }} localhost/{{ repo_image_name }}:${VERSION}
     {{ PODMAN }} images
     echo "::endgroup::"
 

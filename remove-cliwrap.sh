@@ -13,6 +13,7 @@ rm -f \
 
 # binaries which were wrapped
 mv -f /usr/libexec/rpm-ostree/wrapped/* /usr/bin
+restorecon -Rv /usr/bin
 rm -rf /usr/libexec/rpm-ostree
 
 # Install dnf5 if not present

@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/bash -x
 
 if [[ ! -d /usr/libexec/rpm-ostree/wrapped ]]; then
     echo "cliwrap is not setup, skipping..."

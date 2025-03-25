@@ -51,17 +51,17 @@ jobs:
       - name: Build Image
         shell: bash
         run: |
-          just build ${{ matrix.image }}
-      #    sudo just build ${{ matrix.image }}
-      # Temporarily disable rechunking to validate behavior
-      #- name: Rechunk Image
-      #  shell: bash
-      #  run: |
-      #    sudo just rechunk ${{ matrix.image }}
-      #- name: Load and Tag Image
-      #  shell: bash
-      #  run: |
-      #    just load-image ${{ matrix.image }}
+          # note: if disabling rechunker, must also disable sudo call
+          # just build ${{ matrix.image }}
+          sudo just build ${{ matrix.image }}
+      - name: Rechunk Image
+        shell: bash
+        run: |
+          sudo just rechunk ${{ matrix.image }}
+      - name: Load and Tag Image
+        shell: bash
+        run: |
+          just load-image ${{ matrix.image }}
       - name: Get Tags
         id: get_tags
         shell: bash

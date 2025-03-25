@@ -182,11 +182,7 @@ build image="bluefin":
     {{ PODMAN }} build "${BUILD_ARGS[@]}" .
     echo "::endgroup::"
 
-    if [[ "${UID}" -gt "0" ]]; then
-        just rechunk {{ image }}
-    else
-        {{ PODMAN }} rmi ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}"
-    fi
+    {{ PODMAN }} rmi ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}"
 
 # Rechunk Image
 [private]

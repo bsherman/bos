@@ -183,8 +183,8 @@ build image="bluefin":
     echo "::endgroup::"
 
     echo "::group:: Tag Image with Version"
-    VERSION=$({{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{image}} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
     {{ PODMAN }} tag ${IMAGE} localhost/{{ repo_image_name }}:${VERSION}
+    {{ PODMAN }} images
     echo "::endgroup::"
 
     {{ PODMAN }} rmi ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}"

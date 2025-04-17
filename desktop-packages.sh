@@ -63,13 +63,6 @@ $DNF install --setopt=install_weak_deps=False -y \
     strace \
     xorriso
 
-# ghostty terminal (only on Fedora)
-if [ -f /etc/fedora-release ]; then
-    $DNF copr enable pgdev/ghostty
-    $DNF install --setopt=install_weak_deps=False -y \
-        ghostty
-fi
-
 # github cli
 if [[ "dnf5" == "${DNF}" ]]; then
     $DNF config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo

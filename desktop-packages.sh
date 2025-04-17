@@ -22,6 +22,7 @@ if [ -f /etc/centos-release ]; then
     # for EL, enable EPEL and EPEL testing repos
     $DNF config-manager --set-enabled epel
     $DNF config-manager --set-enabled epel-testing
+    update-crypto-policies --set LEGACY
 fi
 
 # common packages installed to desktops

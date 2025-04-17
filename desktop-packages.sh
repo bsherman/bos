@@ -66,7 +66,8 @@ $DNF install --setopt=install_weak_deps=False -y \
 # ghostty terminal (only on Fedora)
 if [ -f /etc/fedora-release ]; then
     $DNF copr enable pgdev/ghostty
-    dnf install ghostty
+    $DNF install --setopt=install_weak_deps=False -y \
+        ghostty
 fi
 
 # github cli

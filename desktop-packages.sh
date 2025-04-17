@@ -18,6 +18,12 @@ gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
 
+if [ -f /etc/centos-release ]; then
+    # for EL, enable EPEL and EPEL testing repos
+    $DNF config-manager --set-enabled epel
+    $DNF config-manager --set-enabled epel-testing
+fi
+
 # common packages installed to desktops
 $DNF install --setopt=install_weak_deps=False -y \
     ccache \
@@ -52,8 +58,16 @@ $DNF install --setopt=install_weak_deps=False -y \
     powerline-fonts \
     qemu-img \
     qemu-kvm \
+    rpmrebuild \
+    sbsigntools \
     strace \
     xorriso
+
+# ghostty terminal (only on Fedora)
+if [ -f /etc/fedora-release ]; then
+    $DNF copr enable pgdev/ghostty
+    dnf install ghostty
+fi
 
 # github cli
 if [[ "dnf5" == "${DNF}" ]]; then
@@ -66,11 +80,12 @@ $DNF -y install gh --repo gh-cli
 # github direct installs
 /ctx/github-release-install.sh twpayne/chezmoi x86_64
 
-# developer tools which aren't in EPEL, etc, so this installs them in a consistent fashion at least
-curl -Lo /tmp/yamlfmt.tar.gz \
-    "$(/ctx/github-release-url.sh google/yamlfmt Linux_x86_64)"
-tar -xvf /tmp/yamlfmt.tar.gz -C /usr/bin/ yamlfmt
+# we use devpod flatpak, but the CLI is still handy
+curl -Lo /usr/bin/devpod \
+    "$(/ctx/github-release-url.sh loft-sh/devpod linux-amd64)"
+chmod +x /usr/bin/devpod
 
+# developer tools which aren't in EPEL, etc, so this installs them in a consistent fashion at least
 mkdir -p /tmp/shellcheck
 curl -Lo /tmp/shellcheck.tar.xz \
     "$(/ctx/github-release-url.sh koalaman/shellcheck linux.x86_64)"
@@ -80,6 +95,10 @@ mv /tmp/shellcheck/shellcheck /usr/bin/
 curl -Lo /usr/bin/shfmt \
     "$(/ctx/github-release-url.sh mvdan/sh linux_amd64)"
 chmod +x /usr/bin/shfmt
+
+curl -Lo /tmp/yamlfmt.tar.gz \
+    "$(/ctx/github-release-url.sh google/yamlfmt Linux_x86_64)"
+tar -xvf /tmp/yamlfmt.tar.gz -C /usr/bin/ yamlfmt
 
 # Zed because why not?
 curl -Lo /tmp/zed.tar.gz \

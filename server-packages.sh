@@ -4,6 +4,12 @@ set ${SET_X:+-x} -eou pipefail
 
 echo "Running server packages scripts..."
 
+if [ -f /etc/centos-release ]; then
+    # for EL, enable EPEL and EPEL testing repos
+    $DNF config-manager --set-enabled epel
+    $DNF config-manager --set-enabled epel-testing
+fi
+
 # common packages installed to desktops and servers
 $DNF install -y \
     bc \
@@ -19,15 +25,11 @@ $DNF install -y \
     nmap \
     numactl \
     nvtop \
+    picocom \
     podman-tui \
     socat \
-    udica
-
-if [ -f /etc/fedora-release ]; then
-$DNF install -y \
-    picocom \
-    unrar
-fi
+    udica \
+    unrar-free
 
 # official 7zip until we get Fedora/EPEL packages
 curl -Lo /tmp/7zip.tar.xz \

@@ -8,12 +8,12 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     # ensure /opt and /usr/local are proper
     if [[ ! -h /opt ]]; then
         rm -fr /opt
-	mkdir -p /var/opt
-	ln -s /var/opt /opt
+        mkdir -p /var/opt
+        ln -s /var/opt /opt
     fi
     if [[ ! -h /usr/local ]]; then
         rm -fr /usr/local
-	ln -s /var/usrlocal /usr/local
+        ln -s /var/usrlocal /usr/local
     fi
 
     # copy system files

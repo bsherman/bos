@@ -75,11 +75,6 @@ $DNF -y install gh --repo gh-cli
 # github direct installs
 /ctx/github-release-install.sh twpayne/chezmoi x86_64
 
-# we use devpod flatpak, but the CLI is still handy
-curl -Lo /usr/bin/devpod \
-    "$(/ctx/github-release-url.sh loft-sh/devpod linux-amd64)"
-chmod +x /usr/bin/devpod
-
 # developer tools which aren't in EPEL, etc, so this installs them in a consistent fashion at least
 mkdir -p /tmp/shellcheck
 curl -Lo /tmp/shellcheck.tar.xz \

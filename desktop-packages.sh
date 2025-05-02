@@ -5,7 +5,8 @@ set ${SET_X:+-x} -eou pipefail
 echo "Running desktop packages scripts..."
 /ctx/desktop-1password.sh
 
-# ublue staging repo needed for misc packages provided by ublue
+# ublue staging and packages repos needed for misc packages provided by ublue
+$DNF -y copr enable ublue-os/packages
 $DNF -y copr enable ublue-os/staging
 
 # VSCode because it's still better for a lot of things
@@ -62,6 +63,7 @@ $DNF install --setopt=install_weak_deps=False -y \
     rpmrebuild \
     sbsigntools \
     strace \
+    ublue-os-libvirt-workarounds \
     xorriso
 
 # github cli

@@ -10,7 +10,7 @@ repos=(
     fedora-updates.repo
     fedora-updates-archive.repo
     fedora-updates-testing.repo
-    ganto-lxc4-fedora-"$(rpm -E %fedora)".repo
+    gh-cli.repo
     google-chrome.repo
     negativo17-fedora-multimedia.repo
     negativo17-fedora-nvidia.repo
@@ -19,7 +19,10 @@ repos=(
     rpm-fusion-nonfree-steam.repo
     tailscale.repo
     terra.repo
+    ublue-os-packages-fedora-"$(rpm -E %fedora)".repo
+    ublue-os-packages-epel-"$(rpm -E %centos)".repo
     ublue-os-staging-fedora-"$(rpm -E %fedora)".repo
+    ublue-os-staging-epel-"$(rpm -E %centos)".repo
     vscode.repo
 )
 

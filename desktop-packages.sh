@@ -49,7 +49,6 @@ $DNF install --setopt=install_weak_deps=False -y \
     libretls \
     libvirt \
     libvirt-daemon-kvm \
-    libvirt-ssh-proxy \
     libvirt-nss \
     lm_sensors \
     ltrace \
@@ -58,13 +57,12 @@ $DNF install --setopt=install_weak_deps=False -y \
     patch \
     pipx \
     powerline-fonts \
-    qemu-img \
-    qemu-kvm \
     rpmrebuild \
     sbsigntools \
     strace \
     ublue-os-libvirt-workarounds \
     xorriso
+    zenity \
 
 # github cli
 if [[ "dnf5" == "${DNF}" ]]; then

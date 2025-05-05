@@ -61,8 +61,8 @@ $DNF install --setopt=install_weak_deps=False -y \
     sbsigntools \
     strace \
     ublue-os-libvirt-workarounds \
-    xorriso
-    zenity \
+    xorriso \
+    zenity
 
 # github cli
 if [[ "dnf5" == "${DNF}" ]]; then

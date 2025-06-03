@@ -14,6 +14,7 @@ fi
 $DNF install -y \
     bc \
     erofs-utils \
+    git-lfs \
     hdparm \
     iotop \
     ipcalc \

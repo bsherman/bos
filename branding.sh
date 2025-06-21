@@ -2,7 +2,7 @@
 
 set ${SET_X:+-x} -eou pipefail
 
-if [[ "${IMAGE}" =~ cosmic|ucore ]]; then
+if [[ "${IMAGE}" =~ ucore ]]; then
     tee /usr/share/ublue-os/image-info.json <<'EOF'
 {
   "image-name": "",
@@ -22,10 +22,6 @@ case "${IMAGE}" in
     ;;
 "aurora"*)
     base_image="kinoite"
-    ;;
-"cosmic"*)
-    #shellcheck disable=2153
-    base_image="${BASE_IMAGE}"
     ;;
 "ucore"*)
     base_image="${BASE_IMAGE}"
@@ -51,15 +47,6 @@ cp /tmp/image-info.json /usr/share/ublue-os/image-info.json
 
 if [[ "$IMAGE" =~ bazzite ]]; then
     sed -i 's/image-branch/image-tag/' /usr/libexec/bazzite-fetch-image
-fi
-
-# OS Release File for Cosmic
-if [[ "$IMAGE" =~ cosmic ]]; then
-    sed -i "s/^VARIANT_ID=.*/VARIANT_ID=${IMAGE}/" /usr/lib/os-release
-    sed -i "s/^NAME=.*/NAME=\"${IMAGE^} Atomic\"/" /usr/lib/os-release
-    sed -i "s/^DEFAULT_HOSTNAME=.*/DEFAULT_HOSTNAME=\"${IMAGE^}-atomic\"/" /usr/lib/os-release
-    sed -i "s/^ID=fedora/ID=${IMAGE^}\nID_LIKE=\"fedora\"/" /usr/lib/os-release
-    sed -i "/^REDHAT_BUGZILLA_PRODUCT=/d; /^REDHAT_BUGZILLA_PRODUCT_VERSION=/d; /^REDHAT_SUPPORT_PRODUCT=/d; /^REDHAT_SUPPORT_PRODUCT_VERSION=/d" /usr/lib/os-release
 fi
 
 sed -i "s|^PRETTY_NAME=.*|PRETTY_NAME=\"$(echo "${IMAGE^}" | cut -d - -f1) (Version: ${VERSION} / FROM ${BASE_IMAGE^} $(rpm -E %fedora))\"|" /usr/lib/os-release

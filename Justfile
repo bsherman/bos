@@ -15,8 +15,6 @@ images := '(
     [bluefin-lts]="bluefin-dx"
     [bluefin]="bluefin-dx"
     [bluefin-nvidia]="bluefin-dx-nvidia"
-    [cosmic]="cosmic"
-    [cosmic-nvidia]="cosmic-nvidia"
     [ucore-minimal]="stable"
     [ucore-hci]="stable-zfs"
     [ucore-hci-nvidia]="stable-nvidia-zfs"
@@ -126,15 +124,6 @@ build image="bluefin":
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
         fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
-        ;;
-    "cosmic"*)
-        just verify-container bluefin:stable-daily
-        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/bluefin:stable-daily | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container akmods:coreos-stable-"${fedora_version}"
-        BASE_IMAGE=base-main
-        TAG_VERSION="${fedora_version}"
-        just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        skopeo inspect docker://ghcr.io/ublue-os/akmods:coreos-stable-"${fedora_version}" > /tmp/inspect-"{{ image }}".json
         ;;
     "ucore"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
@@ -376,9 +365,6 @@ build-iso image="bluefin" ghcr="0" clean="0":
     *"bluefin"*)
         FLATPAK_LIST_URL="https://raw.githubusercontent.com/ublue-os/bluefin/refs/heads/main/bluefin_flatpaks/flatpaks"
     ;;
-    *"cosmic"*)
-        FLATPAK_LIST_URL="https://raw.githubusercontent.com/ublue-os/cosmic/refs/heads/main/flatpaks.txt"
-    ;;
     esac
     curl -Lo "${FLATPAK_REFS_DIR_ABS}"/flatpaks.txt "${FLATPAK_LIST_URL}"
     ADDITIONAL_FLATPAKS=(
@@ -388,14 +374,7 @@ build-iso image="bluefin" ghcr="0" clean="0":
         app/org.libreoffice.LibreOffice/x86_64/stable
         app/org.prismlauncher.PrismLauncher/x86_64/stable
     )
-    if [[ "{{ image }}" =~ cosmic ]]; then
-        ADDITIONAL_FLATPAKS+=(
-            app/org.gnome.World.PikaBackup/x86_64/stable
-            app/it.mijorus.gearlever/x86_64/stable
-            runtime/org.gtk.Gtk3theme.adw-gtk3/x86_64/3.22
-            runtime/org.gtk.Gtk3theme.adw-gtk3-dark/x86_64/3.22
-        )
-    elif [[ "{{ image }}" =~ bazzite ]]; then
+    if [[ "{{ image }}" =~ bazzite ]]; then
         ADDITIONAL_FLATPAKS+=(app/org.gnome.World.PikaBackup/x86_64/stable)
     elif [[ "{{ image }}" =~ aurora|bluefin ]]; then
         ADDITIONAL_FLATPAKS+=(app/it.mijorus.gearlever/x86_64/stable)

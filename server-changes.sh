@@ -2,13 +2,15 @@
 
 set ${SET_X:+-x} -eou pipefail
 
-if [[ ${IMAGE} =~ ucore ]]; then
+if [[ ${IMAGE} =~ cayo|ucore ]]; then
     echo "Tweaking existing server config..."
 
-    $DNF -y remove p7zip p7zip-plugins podman-compose
-
-    # cockpit extensions not in ucore
+    # cockpit extensions not in cayo or ucore
     $DNF install -y cockpit-files cockpit-ostree
+fi
+
+if [[ ${IMAGE} =~ ucore ]]; then
+    $DNF -y remove p7zip p7zip-plugins podman-compose
 
     # moby-engine packages on uCore conflict with docker-ce
     $DNF remove -y \

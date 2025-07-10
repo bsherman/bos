@@ -21,11 +21,10 @@ $DNF install -y \
     bc \
     git-lfs \
     hdparm \
-    iotop \
     ipcalc \
     iperf3 \
     just \
-    lshw \
+    libsodium \
     lzip \
     netcat \
     nmap \

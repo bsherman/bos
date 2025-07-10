@@ -76,12 +76,14 @@ build image="bluefin":
         exit 1
     fi
     BUILD_ARGS=()
+    DIST_ABRV=fc
     DNF=dnf5
 
     case "{{ image }}" in
     "bluefin-gdx"*|"bluefin-lts"*)
         BASE_IMAGE="${check}"
         TAG_VERSION=lts
+        DIST_ABRV=el
         DNF=dnf
         ;;
     "aurora-latest"*|"bluefin-latest"*)
@@ -124,7 +126,7 @@ build image="bluefin":
     *)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
-        fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP 'fc\K[0-9]+')"
+        fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP "${DIST_ABRV}\K[0-9]+")"
         ;;
     esac
 

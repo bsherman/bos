@@ -26,6 +26,7 @@ $DNF install -y \
     just \
     libsodium \
     lzip \
+    mosh \
     netcat \
     nmap \
     numactl \

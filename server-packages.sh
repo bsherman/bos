@@ -35,8 +35,7 @@ $DNF install -y \
     podman-tui \
     socat \
     udica \
-    unrar-free \
-    "$(/ctx/github-release-url.sh getsops/sops x86_64.rpm)"
+    unrar-free
 
 # age is an unlikely candidate for EPEL until the Go packaging thing happens in Fedora 43
 curl -Lo /tmp/age.tar.gz \

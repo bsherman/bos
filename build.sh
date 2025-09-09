@@ -17,9 +17,6 @@ case "${IMAGE}" in
     echo "::group:: ===Desktop Packages==="
     /ctx/desktop-packages.sh
     echo "::endgroup::"
-    echo "::group:: ===Docker Packages==="
-    /ctx/server-docker-ce.sh
-    echo "::endgroup::"
     ;;
 "bazzite"*)
     echo "::group:: ===Desktop Changes==="
@@ -28,6 +25,10 @@ case "${IMAGE}" in
 
     echo "::group:: ===Desktop Packages==="
     /ctx/desktop-packages.sh
+    echo "::endgroup::"
+
+    echo "::group:: ===Docker Packages==="
+    /ctx/server-docker-ce.sh
     echo "::endgroup::"
     ;;
 "cayo"* | "ucore"*)

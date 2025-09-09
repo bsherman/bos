@@ -10,7 +10,7 @@ if [[ ${IMAGE} =~ cayo|ucore ]]; then
 fi
 
 if [[ ${IMAGE} =~ ucore ]]; then
-    $DNF -y remove p7zip p7zip-plugins podman-compose
+    $DNF -y remove podman-compose
 
     # moby-engine packages on uCore conflict with docker-ce
     $DNF remove -y \

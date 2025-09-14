@@ -28,7 +28,7 @@ case "${IMAGE}" in
     echo "::endgroup::"
 
     echo "::group:: ===Docker Packages==="
-    /ctx/server-docker-ce.sh
+    $DNF install -y moby-engine docker-buildx docker-compose
     echo "::endgroup::"
     ;;
 "cayo"* | "ucore"*)

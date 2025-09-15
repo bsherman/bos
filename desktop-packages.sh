@@ -29,27 +29,13 @@ fi
 # common packages installed to desktops
 $DNF install --setopt=install_weak_deps=False -y \
     ccache \
-    cockpit-bridge \
-    cockpit-files \
-    cockpit-machines \
-    cockpit-networkmanager \
-    cockpit-ostree \
-    cockpit-podman \
-    cockpit-selinux \
-    cockpit-storaged \
-    cockpit-system \
     code \
-    edk2-ovmf \
     git \
     gnome-shell-extension-no-overview \
-    guestfs-tools \
     htop \
     jetbrains-mono-fonts-all \
     libpcap-devel \
     libretls \
-    libvirt \
-    libvirt-daemon-kvm \
-    libvirt-nss \
     lm_sensors \
     ltrace \
     make \
@@ -59,7 +45,6 @@ $DNF install --setopt=install_weak_deps=False -y \
     rpmrebuild \
     sbsigntools \
     strace \
-    ublue-os-libvirt-workarounds \
     xorriso \
     zenity
 

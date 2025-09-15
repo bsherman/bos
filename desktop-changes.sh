@@ -22,6 +22,9 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     # remove solaar and input leap, if installed
     $DNF -y remove input-leap podman-compose solaar virt-manager virt-viewer virt-v2v
 
+    # ensure no moby-engine packages, we can use sysext if needed
+    $DNF remove -y containerd docker-buildx docker-compose moby-engine runc
+
     # custom gnome overrides
     mkdir -p /tmp/ublue-schema-test &&
         find /usr/share/glib-2.0/schemas/ -type f ! -name "*.gschema.override" -exec cp {} /tmp/ublue-schema-test/ \; &&

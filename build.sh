@@ -26,10 +26,6 @@ case "${IMAGE}" in
     echo "::group:: ===Desktop Packages==="
     /ctx/desktop-packages.sh
     echo "::endgroup::"
-
-    echo "::group:: ===Docker Packages==="
-    $DNF install -y moby-engine docker-buildx docker-compose
-    echo "::endgroup::"
     ;;
 "cayo"* | "ucore"*)
     echo "::group:: ===Server Changes==="

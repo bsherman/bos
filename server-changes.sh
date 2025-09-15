@@ -7,4 +7,7 @@ if [[ ${IMAGE} =~ cayo|ucore ]]; then
 
     # cockpit extensions not in cayo or ucore
     $DNF install -y cockpit-files cockpit-ostree
+
+    # ensure no moby-engine packages, we can use sysext if needed
+    $DNF remove -y containerd docker-buildx docker-compose moby-engine runc
 fi

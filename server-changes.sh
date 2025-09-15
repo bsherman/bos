@@ -9,5 +9,5 @@ if [[ ${IMAGE} =~ cayo|ucore ]]; then
     $DNF install -y cockpit-files cockpit-ostree
 
     # ensure no moby-engine packages, we can use sysext if needed
-    $DNF remove -y containerd docker-buildx docker-compose moby-engine runc
+    $DNF remove -y containerd docker-buildx docker-cli docker-compose moby-engine runc
 fi

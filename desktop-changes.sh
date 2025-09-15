@@ -20,10 +20,10 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     rsync -rvK /ctx/system_files/silverblue/ /
 
     # remove solaar and input leap, if installed
-    $DNF -y remove input-leap podman-compose solaar virt-manager virt-viewer virt-v2v
+    $DNF -y remove input-leap solaar virt-manager virt-viewer virt-v2v
 
     # ensure no moby-engine packages, we can use sysext if needed
-    $DNF remove -y containerd docker-buildx docker-compose moby-engine runc
+    $DNF remove -y containerd docker-buildx docker-cli docker-compose moby-engine runc
 
     # custom gnome overrides
     mkdir -p /tmp/ublue-schema-test &&

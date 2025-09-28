@@ -31,7 +31,6 @@ runs:
           images+=("bluefin-gdx" "bluefin-lts")
           ;;
         "Server")
-          images+=("cayo")
           images+=("ucore-minimal" "ucore" "ucore-nvidia")
           images+=("ucore-hci" "ucore-hci-nvidia")
           ;;

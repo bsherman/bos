@@ -33,7 +33,6 @@ $DNF install -y \
     nvtop \
     picocom \
     podman-tui \
-    skopeo \
     socat \
     udica \
     unrar-free

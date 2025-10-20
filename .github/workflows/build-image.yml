@@ -110,19 +110,25 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.0.0
+        with:
+          cosign-release: 'v3.0.2'
+        if: >-
+          contains(fromJson('["workflow_dispatch", "merge_group"]'),
+          github.event_name) || github.event.schedule == '41 6 * * 0'
       - name: Sign Container Image
         if: >-
           contains(fromJson('["workflow_dispatch", "merge_group"]'),
           github.event_name) || github.event.schedule == '41 6 * * 0'
         run: |
           cosign sign -y --key env://COSIGN_PRIVATE_KEY \
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${TAGS}
+              --new-bundle-format=false \
+              ${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}@${TAGS}
         env:
           TAGS: >-
             ${{ steps.push.outputs.outputs
             && fromJSON(steps.push.outputs.outputs).digest }}
-          REGISTRY: ${{ steps.registry_case.outputs.lowercase }}
-          COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
   check:
     name: Check Build ${{ inputs.image_flavor }} Images Successful

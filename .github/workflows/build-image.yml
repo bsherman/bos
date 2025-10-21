@@ -113,7 +113,7 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v4.0.0
         with:
-          cosign-release: 'v3.0.2'
+          cosign-release: 'v2.6.1'
         if: >-
           contains(fromJson('["workflow_dispatch", "merge_group"]'),
           github.event_name) || github.event.schedule == '41 6 * * 0'
@@ -123,7 +123,6 @@ jobs:
           github.event_name) || github.event.schedule == '41 6 * * 0'
         run: |
           cosign sign -y --key env://COSIGN_PRIVATE_KEY \
-              --new-bundle-format=false \
               ${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}@${TAGS}
         env:
           TAGS: >-

@@ -483,7 +483,7 @@ verify-container container="" registry="ghcr.io/ublue-os" key="":
     set ${SET_X:+-x} -eou pipefail
     # Get Cosign if Needed
     if [[ ! $(command -v cosign) ]]; then
-        COSIGN_CONTAINER_ID=$({{ SUDOIF }} {{ PODMAN }} create ghcr.io/sigstore/cosign/cosign:v3.0.2 bash)
+        COSIGN_CONTAINER_ID=$({{ SUDOIF }} {{ PODMAN }} create ghcr.io/sigstore/cosign/cosign:v2.6.1 bash)
         {{ SUDOIF }} {{ PODMAN }} cp "${COSIGN_CONTAINER_ID}":/ko-app/cosign /usr/local/bin/cosign
         {{ SUDOIF }} {{ PODMAN }} rm -f "${COSIGN_CONTAINER_ID}"
     fi
@@ -503,7 +503,7 @@ verify-container container="" registry="ghcr.io/ublue-os" key="":
     fi
 
     # Verify Container using cosign public key
-    if ! cosign verify --new-bundle-format=false --key "${key}" "{{ registry }}"/"{{ container }}" >/dev/null; then
+    if ! cosign verify --key "${key}" "{{ registry }}"/"{{ container }}" >/dev/null; then
         echo "NOTICE: Verification failed. Please ensure your public key is correct."
         exit 1
     fi

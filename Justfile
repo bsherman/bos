@@ -17,10 +17,10 @@ images := '(
     [bluefin-nvidia]="bluefin-dx-nvidia-open"
     [cayo]="fedora"
     [ucore-minimal]="stable"
-    [ucore-hci]="stable-zfs"
-    [ucore-hci-nvidia]="stable-nvidia-zfs"
-    [ucore]="stable-zfs"
-    [ucore-nvidia]="stable-nvidia-zfs"
+    [ucore-hci]="stable"
+    [ucore-hci-nvidia]="stable-nvidia"
+    [ucore]="stable"
+    [ucore-nvidia]="stable-nvidia"
 )'
 export SUDO_DISPLAY := if `if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then echo true; fi` == "true" { "true" } else { "false" }
 export SUDOIF := if `id -u` == "0" { "" } else if SUDO_DISPLAY == "true" { "sudo --askpass" } else { "sudo" }

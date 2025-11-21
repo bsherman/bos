@@ -119,14 +119,12 @@ build image="bluefin":
     case "{{ image }}" in
     "ucore"*)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
-        just verify-container akmods:coreos-stable-"${fedora_version}"
-        skopeo inspect docker://ghcr.io/ublue-os/akmods:coreos-stable-"${fedora_version}" > /tmp/inspect-"{{ image }}".json
+        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["org.opencontainers.image.version"]' | grep -oP '^\K[0-9]+')"
         ;;
     *)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
-        fedora_version="$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json | grep -oP "${DIST_ABRV}\K[0-9]+")"
+        fedora_version="$(jq -r '.Labels["org.opencontainers.image.version"]' < /tmp/inspect-{{ image }}.json | grep -oP '^\K[0-9]+')"
         ;;
     esac
 
@@ -145,7 +143,6 @@ build image="bluefin":
     BUILD_ARGS+=("--file" "Containerfile")
     BUILD_ARGS+=("--label" "org.opencontainers.image.title={{ repo_image_name_styled }}")
     BUILD_ARGS+=("--label" "org.opencontainers.image.version=$VERSION")
-    BUILD_ARGS+=("--label" "ostree.linux=$(jq -r '.Labels["ostree.linux"]' < /tmp/inspect-{{ image }}.json)")
     BUILD_ARGS+=("--label" "org.opencontainers.image.description={{ repo_image_name }} is my OCI image built from ublue projects. It mainly extends them for my uses.")
     BUILD_ARGS+=("--build-arg" "IMAGE={{ image }}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE=$BASE_IMAGE")
@@ -201,13 +198,11 @@ rechunk image="bluefin":
 
     CREF=$({{ SUDOIF }} {{ PODMAN }} create localhost/{{ repo_image_name }}:{{ image }} bash)
     MOUNT=$({{ SUDOIF }} {{ PODMAN }} mount "$CREF")
-    # FEDORA_VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect "$CREF" | jq -r '.[]["Config"]["Labels"]["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
     OUT_NAME="{{ repo_image_name }}_{{ image }}"
     VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect "$CREF" | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')"
     LABELS="
     org.opencontainers.image.title={{ repo_image_name }}:{{ image }}
     org.opencontainers.image.revision=$(git rev-parse HEAD)
-    ostree.linux=$({{ SUDOIF }} {{ PODMAN }} inspect "$CREF" | jq -r '.[].["Config"]["Labels"]["ostree.linux"]')
     org.opencontainers.image.description={{ repo_image_name }} is my OCI image built from ublue projects. It mainly extends them for my uses.
     "
     echo "::endgroup::"
@@ -401,7 +396,7 @@ build-iso image="bluefin" ghcr="0" clean="0":
     -v "${TEMP_FLATPAK_INSTALL_DIR}":/temp_flatpak_install_dir \
     "${IMAGE_FULL}" /temp_flatpak_install_dir/install-flatpaks.sh
 
-    VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect ${IMAGE_FULL} | jq -r '.[]["Config"]["Labels"]["ostree.linux"]' | grep -oP 'fc\K[0-9]+')"
+    VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect ${IMAGE_FULL} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]' | grep -oP '\K[0-9]+'')"
     if [[ "{{ ghcr }}" == "1" && "{{ clean }}" == "1" ]]; then
         {{ SUDOIF }} {{ PODMAN }} rmi ${IMAGE_FULL}
     fi
@@ -512,9 +507,16 @@ verify-container container="" registry="ghcr.io/ublue-os" key="":
 [group('Utility')]
 secureboot image="bluefin":
     #!/usr/bin/env bash
-    set ${SET_X:+-x} -eou pipefail
+    set ${SET_X:+-x}
     # Get the vmlinuz to check
-    kernel_release=$({{ PODMAN }} inspect "{{ repo_image_name }}":"{{ image }}" | jq -r '.[].Config.Labels["ostree.linux"]')
+    full_kernel=$({{ PODMAN }} run --rm "{{ repo_image_name }}":"{{ image }}" rpm -q kernel | grep ^kernel)
+    if [ -n "$full_kernel" ]; then
+        kernel_release=$(echo "$full_kernel" | sed 's/kernel-//')
+    else
+        full_kernel=$({{ PODMAN }} run "{{ repo_image_name }}":"{{ image }}" rpm -q kernel-longterm | grep ^kernel)
+        kernel_release=$(echo "$full_kernel" | sed 's/kernel-longterm-//')
+    fi
+    set -eou pipefail
     TMP=$({{ PODMAN }} create "{{ repo_image_name }}":"{{ image }}" bash)
     {{ PODMAN }} cp "$TMP":/usr/lib/modules/"${kernel_release}"/vmlinuz /tmp/vmlinuz
     {{ PODMAN }} rm "$TMP"
@@ -526,19 +528,16 @@ secureboot image="bluefin":
     openssl x509 -in /tmp/akmods.der -out /tmp/akmods.crt
 
     # Make sure we have sbverify
-    CMD="$(command -v sbverify)"
-    if [[ -z "${CMD:-}" ]]; then
-        temp_name="sbverify-${RANDOM}"
-        {{ PODMAN }} run -dt \
-            --entrypoint /bin/sh \
-            --volume /tmp/vmlinuz:/tmp/vmlinuz:z \
-            --volume /tmp/kernel-sign.crt:/tmp/kernel-sign.crt:z \
-            --volume /tmp/akmods.crt:/tmp/akmods.crt:z \
-            --name ${temp_name} \
-            alpine:edge
-        {{ PODMAN }} exec "${temp_name}" apk add sbsigntool
-        CMD="{{ PODMAN }} exec ${temp_name} /usr/bin/sbverify"
-    fi
+    temp_name="sbverify-${RANDOM}"
+    {{ PODMAN }} run -dt \
+        --entrypoint /bin/sh \
+        --volume /tmp/vmlinuz:/tmp/vmlinuz:z \
+        --volume /tmp/kernel-sign.crt:/tmp/kernel-sign.crt:z \
+        --volume /tmp/akmods.crt:/tmp/akmods.crt:z \
+        --name ${temp_name} \
+        alpine:edge
+    {{ PODMAN }} exec "${temp_name}" apk add sbsigntool
+    CMD="{{ PODMAN }} exec ${temp_name} /usr/bin/sbverify"
 
     # Confirm that Signatures Are Good
     $CMD --list /tmp/vmlinuz
@@ -548,6 +547,7 @@ secureboot image="bluefin":
         returncode=1
     fi
     if [[ -n "${temp_name:-}" ]]; then
+        {{ PODMAN }} kill "${temp_name}"
         {{ PODMAN }} rm -f "${temp_name}"
     fi
     exit "$returncode"

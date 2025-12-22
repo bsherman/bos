@@ -19,6 +19,7 @@ fi
 $DNF install -y \
     $SEVENZIP \
     bc \
+    cpp \
     git-lfs \
     hdparm \
     ipcalc \
@@ -38,6 +39,6 @@ $DNF install -y \
     unrar-free
 
 # age is an unlikely candidate for EPEL until the Go packaging thing happens in Fedora 43
-curl -Lo /tmp/age.tar.gz \
-    "$(/ctx/github-release-url.sh FiloSottile/age linux-amd64.tar.gz)"
+AGE_REL_URL="$(/ctx/github-release-url.sh FiloSottile/age linux-amd64.tar.gz)"
+curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sL -o /tmp/age.tar.gz "$AGE_REL_URL"
 tar -zxvf /tmp/age.tar.gz -C /usr/bin/ --strip-components=1 --exclude=LICENSE

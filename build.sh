@@ -27,7 +27,7 @@ case "${IMAGE}" in
     /ctx/desktop-packages.sh
     echo "::endgroup::"
     ;;
-"cayo"* | "ucore"*)
+"ucore"*)
     echo "::group:: ===Server Changes==="
     /ctx/server-changes.sh
     echo "::endgroup::"

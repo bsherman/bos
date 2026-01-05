@@ -6,6 +6,7 @@ echo "Running server packages scripts..."
 
 # common packages installed to desktops and servers
 $DNF install -y \
+    7zip \
     age \
     bc \
     binutils \
@@ -22,7 +23,6 @@ $DNF install -y \
     nmap \
     numactl \
     nvtop \
-    p7zip \
     picocom \
     podman-tui \
     socat \

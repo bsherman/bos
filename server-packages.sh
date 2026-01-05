@@ -52,7 +52,16 @@ if [[ ${IMAGE} =~ ucore-hci ]]; then
     groupmod -g 251 incus
 fi
 
-# only try to change gid if docker group exists
+
 if getent group "docker" > /dev/null 2>&1; then
-    groupmod -g 252 docker
+    # If "docker" exists in /usr/lib/group but not in /etc/group
+    if ! grep -q "^docker:" /etc/group && grep -q "^docker:" /usr/lib/group; then
+        # Add the group from /usr/lib/group to /etc/group
+        grep "^docker:" /usr/lib/group >> /etc/group
+    fi
+
+    # If "docker" exists in /etc/group, modify the group ID
+    if grep -q "^docker:" /etc/group; then
+        groupmod -g 252 docker
+    fi
 fi

@@ -4,6 +4,10 @@ set ${SET_X:+-x} -eou pipefail
 
 echo "Running server packages scripts..."
 
+if [ -e /.git ]; then
+    rm -fr /.git
+fi
+
 # common packages installed to desktops and servers
 $DNF install -y \
     7zip \
@@ -48,4 +52,7 @@ if [[ ${IMAGE} =~ ucore-hci ]]; then
     groupmod -g 251 incus
 fi
 
-groupmod -g 252 docker
+# only try to change gid if docker group exists
+if getent group "docker" > /dev/null 2>&1; then
+    groupmod -g 252 docker
+fi

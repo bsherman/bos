@@ -78,6 +78,9 @@ build image="bluefin":
     DIST_ABRV=fc
     DNF=dnf5
 
+    # Detect current architecture
+    ARCH="$(uname -m)"
+
     case "{{ image }}" in
     "bluefin-gdx"*|"bluefin-lts"*)
         BASE_IMAGE="${check}"
@@ -123,7 +126,14 @@ build image="bluefin":
         ;;
     esac
 
-    VERSION="{{ image }}-${fedora_version}.$(date +%Y%m%d)"
+    # Include arch suffix for non-x86_64 builds to differentiate in registry
+    if [[ "${ARCH}" == "x86_64" ]]; then
+        VERSION="{{ image }}-${fedora_version}.$(date +%Y%m%d)"
+        IMAGE_TAG="{{ image }}"
+    else
+        VERSION="{{ image }}-${fedora_version}.$(date +%Y%m%d)-${ARCH}"
+        IMAGE_TAG="{{ image }}-${ARCH}"
+    fi
     skopeo list-tags docker://ghcr.io/{{ repo_name }}/{{ repo_image_name }} > /tmp/repotags.json
     if [[ $(jq "any(.Tags[]; contains(\"$VERSION\"))" < /tmp/repotags.json) == "true" ]]; then
         POINT="1"
@@ -145,7 +155,7 @@ build image="bluefin":
     BUILD_ARGS+=("--build-arg" "SET_X=${SET_X:-}")
     BUILD_ARGS+=("--build-arg" "VERSION=$VERSION")
     BUILD_ARGS+=("--build-arg" "DNF=$DNF")
-    BUILD_ARGS+=("--tag" "localhost/{{ repo_image_name }}:{{ image }}")
+    BUILD_ARGS+=("--tag" "localhost/{{ repo_image_name }}:${IMAGE_TAG}")
     if [[ {{ PODMAN }} =~ podman ]]; then
         BUILD_ARGS+=("--pull=newer")
     elif [[ {{ PODMAN }} =~ docker ]]; then
@@ -161,7 +171,7 @@ build image="bluefin":
     echo "::endgroup::"
 
     echo "::group:: Tag Image with Version"
-    {{ PODMAN }} tag localhost/{{ repo_image_name }}:{{ image }} localhost/{{ repo_image_name }}:${VERSION}
+    {{ PODMAN }} tag localhost/{{ repo_image_name }}:${IMAGE_TAG} localhost/{{ repo_image_name }}:${VERSION}
     {{ PODMAN }} images
     echo "::endgroup::"
 
@@ -179,7 +189,15 @@ rechunk image="bluefin":
         exit 0
     fi
 
-    ID=$({{ PODMAN }} images --filter reference=localhost/{{ repo_image_name }}:{{ image }} --format "'{{ '{{.ID}}' }}'")
+    # Detect current architecture
+    ARCH="$(uname -m)"
+    if [[ "${ARCH}" == "x86_64" ]]; then
+        IMAGE_TAG="{{ image }}"
+    else
+        IMAGE_TAG="{{ image }}-${ARCH}"
+    fi
+
+    ID=$({{ PODMAN }} images --filter reference=localhost/{{ repo_image_name }}:${IMAGE_TAG} --format "'{{ '{{.ID}}' }}'")
 
     if [[ -z "$ID" ]]; then
         just build {{ image }}
@@ -187,16 +205,16 @@ rechunk image="bluefin":
 
     if [[ "${UID}" -gt "0" && ! {{ PODMAN }} =~ docker ]]; then
         COPYTMP="$(mktemp -p "${PWD}" -d -t podman_scp.XXXXXXXXXX)"
-        {{ SUDOIF }} TMPDIR="${COPYTMP}" {{ PODMAN }} image scp "${UID}"@localhost::localhost/{{ repo_image_name }}:{{ image }} root@localhost::localhost/{{ repo_image_name }}:{{ image }}
+        {{ SUDOIF }} TMPDIR="${COPYTMP}" {{ PODMAN }} image scp "${UID}"@localhost::localhost/{{ repo_image_name }}:${IMAGE_TAG} root@localhost::localhost/{{ repo_image_name }}:${IMAGE_TAG}
         rm -rf "${COPYTMP}"
     fi
 
-    CREF=$({{ SUDOIF }} {{ PODMAN }} create localhost/{{ repo_image_name }}:{{ image }} bash)
+    CREF=$({{ SUDOIF }} {{ PODMAN }} create localhost/{{ repo_image_name }}:${IMAGE_TAG} bash)
     MOUNT=$({{ SUDOIF }} {{ PODMAN }} mount "$CREF")
-    OUT_NAME="{{ repo_image_name }}_{{ image }}"
+    OUT_NAME="{{ repo_image_name }}_${IMAGE_TAG}"
     VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect "$CREF" | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')"
     LABELS="
-    org.opencontainers.image.title={{ repo_image_name }}:{{ image }}
+    org.opencontainers.image.title={{ repo_image_name }}:${IMAGE_TAG}
     org.opencontainers.image.revision=$(git rev-parse HEAD)
     org.opencontainers.image.description={{ repo_image_name }} is my OCI image built from ublue projects. It mainly extends them for my uses.
     "
@@ -226,9 +244,9 @@ rechunk image="bluefin":
     {{ SUDOIF }} {{ PODMAN }} unmount "$CREF"
     {{ SUDOIF }} {{ PODMAN }} rm "$CREF"
     if [[ "${UID}" -gt "0" ]]; then
-        {{ SUDOIF }} {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
+        {{ SUDOIF }} {{ PODMAN }} rmi localhost/{{ repo_image_name }}:${IMAGE_TAG}
     fi
-    {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
+    {{ PODMAN }} rmi localhost/{{ repo_image_name }}:${IMAGE_TAG}
     echo "::endgroup::"
 
     echo "::group:: Rechunk"
@@ -239,7 +257,7 @@ rechunk image="bluefin":
         --volume "$PWD:/var/git" \
         --volume cache_ostree:/var/ostree \
         --env REPO=/var/ostree/repo \
-        --env PREV_REF=ghcr.io/{{ repo_name }}/{{ repo_image_name }}:{{ image }} \
+        --env PREV_REF=ghcr.io/{{ repo_name }}/{{ repo_image_name }}:${IMAGE_TAG} \
         --env LABELS="$LABELS" \
         --env OUT_NAME="$OUT_NAME" \
         --env VERSION="$VERSION" \
@@ -252,8 +270,8 @@ rechunk image="bluefin":
     echo "::endgroup::"
 
     echo "::group:: Cleanup"
-    {{ SUDOIF }} find {{ repo_image_name }}_{{ image }} -type d -exec chmod 0755 {} \; || true
-    {{ SUDOIF }} find {{ repo_image_name }}_{{ image }}* -type f -exec chmod 0644 {} \; || true
+    {{ SUDOIF }} find {{ repo_image_name }}_${IMAGE_TAG} -type d -exec chmod 0755 {} \; || true
+    {{ SUDOIF }} find {{ repo_image_name }}_${IMAGE_TAG}* -type f -exec chmod 0644 {} \; || true
     if [[ "${UID}" -gt "0" ]]; then
         {{ SUDOIF }} chown -R "${UID}":"${GROUPS[0]}" "${PWD}"
         just load-image {{ image }}
@@ -270,19 +288,37 @@ rechunk image="bluefin":
 load-image image="bluefin":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
-    IMAGE=$({{ PODMAN }} pull oci:${PWD}/{{ repo_image_name }}_{{ image }})
-    {{ PODMAN }} tag ${IMAGE} localhost/{{ repo_image_name }}:{{ image }}
+
+    # Detect current architecture
+    ARCH="$(uname -m)"
+    if [[ "${ARCH}" == "x86_64" ]]; then
+        IMAGE_TAG="{{ image }}"
+    else
+        IMAGE_TAG="{{ image }}-${ARCH}"
+    fi
+
+    IMAGE=$({{ PODMAN }} pull oci:${PWD}/{{ repo_image_name }}_${IMAGE_TAG})
+    {{ PODMAN }} tag ${IMAGE} localhost/{{ repo_image_name }}:${IMAGE_TAG}
     VERSION=$({{ PODMAN }} inspect $IMAGE | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
     {{ PODMAN }} tag ${IMAGE} localhost/{{ repo_image_name }}:${VERSION}
     {{ PODMAN }} images
-    rm -rf {{ repo_image_name }}_{{ image }}
+    rm -rf {{ repo_image_name }}_${IMAGE_TAG}
 
 # Get Tags
 get-tags image="bluefin":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
-    VERSION=$({{ PODMAN }} inspect {{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
-    echo "{{ image }} $VERSION"
+
+    # Detect current architecture
+    ARCH="$(uname -m)"
+    if [[ "${ARCH}" == "x86_64" ]]; then
+        IMAGE_TAG="{{ image }}"
+    else
+        IMAGE_TAG="{{ image }}-${ARCH}"
+    fi
+
+    VERSION=$({{ PODMAN }} inspect {{ repo_image_name }}:${IMAGE_TAG} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
+    echo "${IMAGE_TAG} $VERSION"
 
 # Build ISO
 [group('ISO')]

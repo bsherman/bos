@@ -9,6 +9,9 @@ outputs:
   images:
     description: "List of Images that will be built"
     value: ${{ steps.images.outputs.images }}
+  include:
+    description: "Matrix include array with image and arch combinations"
+    value: ${{ steps.images.outputs.include }}
 runs:
   using: "composite"
   steps:
@@ -16,10 +19,27 @@ runs:
       id: images
       shell: bash
       run: |-
-        # Array to Hold Image Names
+        # Arrays to Hold Image Names and arch support
         images=()
+        include=()
 
-        # Add Images
+        # Define architectures per image type
+        # Desktop images: x86_64 only (upstream doesn't support aarch64 yet)
+        # Server/ucore images: x86_64 and aarch64
+        declare -A arch_support
+        arch_support["bazzite"]="x86_64"
+        arch_support["bazzite-nvidia"]="x86_64"
+        arch_support["bazzite-deck"]="x86_64"
+        arch_support["bazzite-deck-nvidia"]="x86_64"
+        arch_support["bluefin"]="x86_64"
+        arch_support["bluefin-nvidia"]="x86_64"
+        arch_support["ucore-minimal"]="x86_64 aarch64"
+        arch_support["ucore"]="x86_64 aarch64"
+        arch_support["ucore-nvidia"]="x86_64"
+        arch_support["ucore-hci"]="x86_64 aarch64"
+        arch_support["ucore-hci-nvidia"]="x86_64"
+
+        # Add Images based on flavor
         case "${{ inputs.image_flavor }}" in
         "Bazzite")
           images+=("bazzite" "bazzite-nvidia")
@@ -34,9 +54,18 @@ runs:
           ;;
         esac
 
-        # Make into Json Array
-        images="$(jq --null-input --compact-output '$ARGS.positional' \
+        # Build matrix include array with image/arch combinations
+        for img in "${images[@]}"; do
+          for arch in ${arch_support[$img]}; do
+            include+=("{\"image\":\"$img\",\"arch\":\"$arch\"}")
+          done
+        done
+
+        # Make into Json Arrays
+        images_json="$(jq --null-input --compact-output '$ARGS.positional' \
         --args "${images[@]}")"
+        include_json="[$(IFS=,; echo "${include[*]}")]"
 
         # Output
-        echo "images=$images" >> "$GITHUB_OUTPUT"
+        echo "images=$images_json" >> "$GITHUB_OUTPUT"
+        echo "include=$include_json" >> "$GITHUB_OUTPUT"

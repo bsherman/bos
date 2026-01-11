@@ -46,7 +46,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493  # v4
       - name: Install Just
-        uses: ./.github/actions/install-just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
       - name: Maximize Build Space
         uses: ublue-os/remove-unwanted-software@v9
       - name: Build Image

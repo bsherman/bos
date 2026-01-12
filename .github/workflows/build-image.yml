@@ -19,6 +19,7 @@ jobs:
     name: Get ${{ inputs.image_flavor }} Images for Build
     outputs:
       images: ${{ steps.images.outputs.images }}
+      include: ${{ steps.images.outputs.include }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,9 +30,9 @@ jobs:
         with:
           image_flavor: ${{ inputs.image_flavor }}
   build-image:
-    name: Build ${{ inputs.image_flavor }} Images (${{ matrix.image }})
+    name: Build ${{ matrix.image }} (${{ matrix.arch }})
     needs: get-images
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     continue-on-error: false
     permissions:
       contents: read
@@ -40,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ["${{ fromJson(needs.get-images.outputs.images) }}"]
+        include: ${{ fromJson(needs.get-images.outputs.include) }}
     steps:
       - name: Checkout
         uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493  # v4

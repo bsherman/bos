@@ -32,7 +32,6 @@ $DNF install --setopt=install_weak_deps=False -y \
     code \
     git \
     gnome-shell-extension-no-overview \
-    htop \
     jetbrains-mono-fonts-all \
     libpcap-devel \
     libretls \
@@ -44,6 +43,5 @@ $DNF install --setopt=install_weak_deps=False -y \
     powerline-fonts \
     rpmrebuild \
     sbsigntools \
-    strace \
     xorriso \
     zenity

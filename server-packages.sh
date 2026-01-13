@@ -15,14 +15,11 @@ $DNF install -y \
     bc \
     binutils \
     cpp \
-    git-lfs \
     hdparm \
     ipcalc \
     iperf3 \
-    just \
     libsodium \
     lzip \
-    mosh \
     netcat \
     nmap \
     numactl \

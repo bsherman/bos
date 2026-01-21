@@ -32,6 +32,8 @@ $DNF install -y \
     unzip \
     zip
 
+/ctx/github-release-install.sh frostyard/updex $(uname -m).rpm
+
 if [[ ${IMAGE} =~ ucore-hci ]]; then
     $DNF install -y incus
 

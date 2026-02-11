@@ -1,6 +1,4 @@
 [org.gnome.desktop.interface]
-font-name="Inter 10"
-document-font-name="Inter 10"
 monospace-font-name="JetBrains Mono 11"
 
 [org.gnome.desktop.wm.keybindings]
@@ -8,4 +6,3 @@ unmaximize=['<Super>Down']
 
 [org.gnome.desktop.wm.preferences]
 resize-with-right-button=true
-titlebar-font="Inter Bold 10"

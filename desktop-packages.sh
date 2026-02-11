@@ -19,29 +19,9 @@ gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
 
-if [ -f /etc/centos-release ]; then
-    # for EL, enable repos
-    $DNF config-manager --set-enabled epel
-    #$DNF config-manager --set-enabled epel-testing
-    update-crypto-policies --set LEGACY
-fi
-
 # common packages installed to desktops
 $DNF install --setopt=install_weak_deps=False -y \
-    ccache \
     code \
-    git \
     gnome-shell-extension-no-overview \
     jetbrains-mono-fonts-all \
-    libpcap-devel \
-    libretls \
-    lm_sensors \
-    ltrace \
-    make \
-    nerd-fonts \
-    patch \
-    powerline-fonts \
-    rpmrebuild \
-    sbsigntools \
-    xorriso \
-    zenity
+    powerline-fonts

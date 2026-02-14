@@ -14,6 +14,6 @@ if [[ ${IMAGE} =~ ucore ]]; then
     # Temporarily remove cockpit-zfs plugin
     rm -vfr /usr/share/cockpit/zfs \
           /usr/share/polkit-1/actions/*zfs* \
-          /usr/share/polkit-1/rules.d/*zfs*
+          /usr/share/polkit-1/rules.d/*zfs* \
           /usr/share/polkit-1/rules.d/*zpool*
 fi

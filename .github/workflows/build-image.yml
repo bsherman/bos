@@ -62,7 +62,8 @@ jobs:
 
       - name: Free Disk Space (Ubuntu)
         if: ${{ steps.check_mnt.outputs.mnt_is_there == '1' }}
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
+        # v1.3.1
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
 
       - name: Mount BTRFS for podman storage
         uses: ublue-os/container-storage-action@main
@@ -98,7 +99,7 @@ jobs:
           echo "tags=$tags" >> $GITHUB_OUTPUT
           echo $GITHUB_OUTPUT
       # NOTE: disabled secureboot check since bluefin LTS will never pass
-      #- name: Check Secureboot
+      # - name: Check Secureboot
       #  id: secureboot
       #  shell: bash
       #  run: |
@@ -150,8 +151,9 @@ jobs:
           contains(fromJson('["workflow_dispatch", "merge_group"]'),
           github.event_name) || github.event.schedule == '41 6 * * 0'
         run: |
+          REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
           cosign sign -y --key env://COSIGN_PRIVATE_KEY \
-              ${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}@${TAGS}
+              "${REGISTRY}/${{ env.IMAGE_NAME }}@${TAGS}"
         env:
           TAGS: >-
             ${{ steps.push.outputs.outputs

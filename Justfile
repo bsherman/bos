@@ -5,10 +5,12 @@ username := "bsherman"
 images := '(
     [aurora]="aurora"
     [aurora-nvidia]="aurora-nvidia"
-    [bazzite]="bazzite-gnome"
-    [bazzite-nvidia]="bazzite-gnome-nvidia"
-    [bazzite-deck]="bazzite-deck-gnome"
-    [bazzite-deck-nvidia]="bazzite-deck-nvidia-gnome"
+    [bazzite]="bazzite"
+    [bazzite-nvidia]="bazzite-nvidia"
+    [bazzite-deck]="bazzite-deck"
+    [bazzite-deck-nvidia]="bazzite-deck-nvidia"
+    [bazzite-gnome]="bazzite-gnome"
+    [bazzite-gnome-nvidia]="bazzite-gnome-nvidia"
     [bluefin-latest]="bluefin-dx"
     [bluefin-latest-nvidia]="bluefin-dx-nvidia-open"
     [bluefin-gdx]="bluefin-gdx"
@@ -346,8 +348,11 @@ build-iso image="bluefin" ghcr="0" clean="0":
     *"aurora"*)
         FLATPAK_LIST_URL="https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/aurora_flatpaks/flatpaks"
     ;;
-    *"bazzite"*)
+    *"bazzite-gnome"*)
         FLATPAK_LIST_URL="https://raw.githubusercontent.com/ublue-os/bazzite/refs/heads/main/installer/gnome_flatpaks/flatpaks"
+    ;;
+    *"bazzite"*)
+        FLATPAK_LIST_URL="https://raw.githubusercontent.com/ublue-os/bazzite/refs/heads/main/installer/kde_flatpaks/flatpaks"
     ;;
     *"bluefin"*)
         FLATPAK_LIST_URL="https://raw.githubusercontent.com/ublue-os/bluefin/refs/heads/main/bluefin_flatpaks/flatpaks"
@@ -361,7 +366,7 @@ build-iso image="bluefin" ghcr="0" clean="0":
         app/org.libreoffice.LibreOffice/x86_64/stable
         app/org.prismlauncher.PrismLauncher/x86_64/stable
     )
-    if [[ "{{ image }}" =~ bazzite ]]; then
+    if [[ "{{ image }}" =~ bazzite-gnome ]]; then
         ADDITIONAL_FLATPAKS+=(app/org.gnome.World.PikaBackup/x86_64/stable)
     elif [[ "{{ image }}" =~ aurora|bluefin ]]; then
         ADDITIONAL_FLATPAKS+=(app/it.mijorus.gearlever/x86_64/stable)

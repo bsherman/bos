@@ -22,6 +22,10 @@ EOF
 # common packages installed to desktops
 $DNF install --setopt=install_weak_deps=False -y \
     code \
-    gnome-shell-extension-no-overview \
     jetbrains-mono-fonts-all \
     powerline-fonts
+
+if [[ ${IMAGE} =~ bazzite-gnome|bluefin|aurora ]]; then
+    $DNF install --setopt=install_weak_deps=False -y \
+        gnome-shell-extension-no-overview
+fi

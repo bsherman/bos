@@ -12,18 +12,21 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
         ln -s /var/opt /opt
     fi
     if [[ ! -h /usr/local ]]; then
+        # shellcheck disable=SC2114
         rm -fr /usr/local
         ln -s /var/usrlocal /usr/local
     fi
-
-    # copy system files
-    rsync -rvK /ctx/system_files/silverblue/ /
 
     # remove solaar and input leap, if installed
     $DNF -y remove input-leap solaar virt-manager virt-viewer virt-v2v
 
     # ensure no moby-engine packages, we can use sysext if needed
     $DNF remove -y containerd docker-buildx docker-cli docker-compose moby-engine runc
+fi
+
+if [[ ${IMAGE} =~ bluefin|bazzite-gnome ]]; then
+    # copy system files
+    rsync -rvK /ctx/system_files/silverblue/ /
 
     # custom gnome overrides
     mkdir -p /tmp/ublue-schema-test &&

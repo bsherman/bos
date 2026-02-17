@@ -24,6 +24,7 @@ case "${IMAGE}" in
     base_image="kinoite"
     ;;
 "ucore"*)
+    # shellcheck disable=SC2153
     base_image="${BASE_IMAGE}"
     ;;
 esac

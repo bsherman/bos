@@ -23,6 +23,7 @@ runs:
         case "${{ inputs.image_flavor }}" in
         "Bazzite")
           images+=("bazzite" "bazzite-nvidia")
+          images+=("bazzite-gnome" "bazzite-gnome-nvidia")
           #images+=("bazzite-deck" "bazzite-deck-nvidia")
           ;;
         "Bluefin")

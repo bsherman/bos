@@ -17,8 +17,15 @@ There's a single image name `bos` with multiple tags. The idea is, *I run **bOS*
 
 Desktop(and laptop) images are built upon [Bazzite](https://github.com/ublue-os/bazzite).
 
-- `bos:bazzite` - a Bazzite
-- `bos:bazzite-nvidia` - a Bazzite image with Nvidia support
+**KDE variants** (default Bazzite desktop):
+
+- `bos:bazzite` - a Bazzite (KDE)
+- `bos:bazzite-nvidia` - a Bazzite image with Nvidia support (KDE)
+
+**GNOME variants**:
+
+- `bos:bazzite-gnome` - a Bazzite (GNOME)
+- `bos:bazzite-gnome-nvidia` - a Bazzite image with Nvidia support (GNOME)
 
 ### Servers
 

@@ -19,6 +19,7 @@ jobs:
     name: Get ${{ inputs.image_flavor }} Images for Build
     outputs:
       images: ${{ steps.images.outputs.images }}
+      multi_arch_images: ${{ steps.images.outputs.multi_arch_images }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,9 +30,11 @@ jobs:
         with:
           image_flavor: ${{ inputs.image_flavor }}
   build-image:
-    name: Build ${{ inputs.image_flavor }} Images (${{ matrix.image }})
+    name: >-
+      Build ${{ inputs.image_flavor }} Images
+      (${{ matrix.combo.image }}/${{ matrix.combo.arch }})
     needs: get-images
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.combo.runner }}
     continue-on-error: false
     permissions:
       contents: read
@@ -40,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ["${{ fromJson(needs.get-images.outputs.images) }}"]
+        combo: ${{ fromJson(needs.get-images.outputs.images) }}
     steps:
       - name: Checkout
         uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493  # v4
@@ -78,32 +81,66 @@ jobs:
         shell: bash
         run: |
           # note: if disabling rechunker, must also disable sudo call
-          # just build ${{ matrix.image }}
-          sudo just build ${{ matrix.image }}
+          # just build ${{ matrix.combo.image }}
+          sudo just build ${{ matrix.combo.image }}
 
       - name: Rechunk Image
         shell: bash
         run: |
-          sudo just rechunk ${{ matrix.image }}
+          sudo just rechunk ${{ matrix.combo.image }}
 
       - name: Load and Tag Image
         shell: bash
         run: |
-          just load-image ${{ matrix.image }}
+          just load-image ${{ matrix.combo.image }}
 
       - name: Get Tags
         id: get_tags
         shell: bash
         run: |
-          tags=$(just get-tags ${{ matrix.image }})
+          tags=$(just get-tags ${{ matrix.combo.image }})
           echo "tags=$tags" >> $GITHUB_OUTPUT
           echo $GITHUB_OUTPUT
+
+      - name: Compute Push Tags
+        id: push_tags
+        shell: bash
+        run: |
+          TAGS="${{ steps.get_tags.outputs.tags }}"
+          MULTI_ARCH='${{ needs.get-images.outputs.multi_arch_images }}'
+          IMAGE="${{ matrix.combo.image }}"
+          ARCH="${{ matrix.combo.arch }}"
+          IS_MULTI=$(echo "$MULTI_ARCH" | \
+            jq -r --arg img "$IMAGE" 'any(.[]; . == $img)')
+          if [[ "$IS_MULTI" == "true" ]]; then
+            # Append -<arch> to each tag
+            SUFFIXED=""
+            for tag in $TAGS; do
+              SUFFIXED+="${tag}-${ARCH} "
+            done
+            TAGS="${SUFFIXED% }"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "is_multi_arch=$IS_MULTI" >> $GITHUB_OUTPUT
+
+      - name: Tag Images for Multi-Arch Push
+        if: steps.push_tags.outputs.is_multi_arch == 'true'
+        shell: bash
+        run: |
+          ORIG_TAGS="${{ steps.get_tags.outputs.tags }}"
+          ARCH="${{ matrix.combo.arch }}"
+          for tag in $ORIG_TAGS; do
+            podman tag \
+              ${{ env.IMAGE_NAME }}:${tag} \
+              ${{ env.IMAGE_NAME }}:${tag}-${ARCH}
+          done
+
       # NOTE: disabled secureboot check since bluefin LTS will never pass
       # - name: Check Secureboot
       #  id: secureboot
       #  shell: bash
       #  run: |
-      #    just secureboot ${{ matrix.image }}
+      #    just secureboot ${{ matrix.combo.image }}
       - name: Lowercase Registry
         id: registry_case
         uses: ASzc/change-string-case-action@v6
@@ -124,7 +161,7 @@ jobs:
           attempt_delay: 15000
           with: |
             image: ${{ env.IMAGE_NAME }}
-            tags: ${{ steps.get_tags.outputs.tags }}
+            tags: ${{ steps.push_tags.outputs.tags }}
             registry: ${{ steps.registry_case.outputs.lowercase }}
             username: ${{ env.REGISTRY_USER }}
             password: ${{ env.REGISTRY_PASSWORD }}
@@ -133,8 +170,9 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         if: >-
-          contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == '41 6 * * 0'
+          (contains(fromJson('["workflow_dispatch", "merge_group"]'),
+          github.event_name) || github.event.schedule == '41 6 * * 0')
+          && steps.push_tags.outputs.is_multi_arch != 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -144,12 +182,14 @@ jobs:
         with:
           cosign-release: 'v2.6.1'
         if: >-
-          contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == '41 6 * * 0'
+          (contains(fromJson('["workflow_dispatch", "merge_group"]'),
+          github.event_name) || github.event.schedule == '41 6 * * 0')
+          && steps.push_tags.outputs.is_multi_arch != 'true'
       - name: Sign Container Image
         if: >-
-          contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == '41 6 * * 0'
+          (contains(fromJson('["workflow_dispatch", "merge_group"]'),
+          github.event_name) || github.event.schedule == '41 6 * * 0')
+          && steps.push_tags.outputs.is_multi_arch != 'true'
         run: |
           REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
           cosign sign -y --key env://COSIGN_PRIVATE_KEY \
@@ -159,16 +199,106 @@ jobs:
             ${{ steps.push.outputs.outputs
             && fromJSON(steps.push.outputs.outputs).digest }}
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+  create-manifest:
+    name: Create Manifest (${{ matrix.image }})
+    needs: [get-images, build-image]
+    if: >-
+      (contains(fromJson('["workflow_dispatch", "merge_group"]'),
+      github.event_name) || github.event.schedule == '41 6 * * 0')
+      && needs.get-images.outputs.multi_arch_images != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJson(needs.get-images.outputs.multi_arch_images) }}
+    steps:
+      - name: Lowercase Registry
+        id: registry_case
+        uses: ASzc/change-string-case-action@v6
+        with:
+          string: ${{ env.IMAGE_REGISTRY }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get Version Tag
+        id: version
+        run: |
+          REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
+          # Inspect x86_64 image to get the version tag
+          IMG="${REGISTRY}/${{ env.IMAGE_NAME }}"
+          VERSION=$(skopeo inspect \
+            --creds \
+            "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
+            "docker://${IMG}:${{ matrix.image }}-x86_64" \
+            | jq -r \
+            '.Labels["org.opencontainers.image.version"]')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Create and Push Manifests
+        run: |
+          REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
+          IMAGE="${REGISTRY}/${{ env.IMAGE_NAME }}"
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Create manifest for image name tag
+          docker manifest create \
+            "${IMAGE}:${{ matrix.image }}" \
+            "${IMAGE}:${{ matrix.image }}-x86_64" \
+            "${IMAGE}:${{ matrix.image }}-aarch64"
+          docker manifest push "${IMAGE}:${{ matrix.image }}"
+
+          # Create manifest for version tag
+          docker manifest create \
+            "${IMAGE}:${VERSION}" \
+            "${IMAGE}:${VERSION}-x86_64" \
+            "${IMAGE}:${VERSION}-aarch64"
+          docker manifest push "${IMAGE}:${VERSION}"
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.0.0
+        with:
+          cosign-release: 'v2.6.1'
+      - name: Sign Manifests
+        run: |
+          REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
+          IMAGE="${REGISTRY}/${{ env.IMAGE_NAME }}"
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Sign image name manifest
+          DIGEST=$(skopeo inspect --raw \
+            --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
+            "docker://${IMAGE}:${{ matrix.image }}" \
+            | sha256sum | awk '{print "sha256:"$1}')
+          cosign sign -y --recursive \
+            --key env://COSIGN_PRIVATE_KEY \
+            "${IMAGE}@${DIGEST}"
+
+          # Sign version manifest
+          DIGEST=$(skopeo inspect --raw \
+            --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
+            "docker://${IMAGE}:${VERSION}" \
+            | sha256sum | awk '{print "sha256:"$1}')
+          cosign sign -y --recursive \
+            --key env://COSIGN_PRIVATE_KEY \
+            "${IMAGE}@${DIGEST}"
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
   check:
     name: Check Build ${{ inputs.image_flavor }} Images Successful
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    needs: [build-image]
+    needs: [build-image, create-manifest]
     steps:
       - name: Exit on failure
         if: >-
           ${{ contains(fromJson('["failure", "skipped"]'),
-          needs.build-image.result) }}
+          needs.build-image.result)
+          || needs.create-manifest.result == 'failure' }}
         shell: bash
         run: exit 1
       - name: Exit

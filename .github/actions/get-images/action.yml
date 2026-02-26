@@ -7,8 +7,11 @@ inputs:
     required: true
 outputs:
   images:
-    description: "List of Images that will be built"
+    description: "List of image/arch/runner combos to build"
     value: ${{ steps.images.outputs.images }}
+  multi_arch_images:
+    description: "List of image names that need manifest creation"
+    value: ${{ steps.images.outputs.multi_arch_images }}
 runs:
   using: "composite"
   steps:
@@ -16,30 +19,53 @@ runs:
       id: images
       shell: bash
       run: |-
-        # Array to Hold Image Names
-        images=()
+        # Images that should build for both x86_64 and aarch64
+        multi_arch=()
+        # Images that only build for x86_64
+        single_arch=()
 
-        # Add Images
         case "${{ inputs.image_flavor }}" in
         "Bazzite")
-          images+=("bazzite" "bazzite-nvidia")
-          images+=("bazzite-gnome" "bazzite-gnome-nvidia")
-          #images+=("bazzite-deck" "bazzite-deck-nvidia")
+          single_arch+=("bazzite" "bazzite-nvidia")
+          single_arch+=("bazzite-gnome" "bazzite-gnome-nvidia")
+          #single_arch+=("bazzite-deck" "bazzite-deck-nvidia")
           ;;
         "Bluefin")
-          images+=("bluefin" "bluefin-nvidia")
+          single_arch+=("bluefin" "bluefin-nvidia")
           ;;
         "Server")
-          images+=("ucore-minimal" "ucore" "ucore-nvidia")
-          images+=("ucore-hci" "ucore-hci-nvidia")
-          images+=("ucore-minimal-lts" "ucore-lts" "ucore-lts-nvidia")
-          images+=("ucore-hci-lts" "ucore-hci-lts-nvidia")
+          multi_arch+=("ucore-minimal" "ucore")
+          multi_arch+=("ucore-minimal-lts" "ucore-lts")
+          single_arch+=("ucore-nvidia" "ucore-hci" "ucore-hci-nvidia")
+          single_arch+=("ucore-lts-nvidia")
+          single_arch+=("ucore-hci-lts" "ucore-hci-lts-nvidia")
           ;;
         esac
 
-        # Make into Json Array
-        images="$(jq --null-input --compact-output '$ARGS.positional' \
-        --args "${images[@]}")"
+        # Build structured JSON array
+        combos="[]"
+        for img in "${single_arch[@]}"; do
+          combos=$(echo "$combos" | jq -c \
+            --arg image "$img" \
+            '. + [{
+              "image": $image,
+              "arch": "x86_64",
+              "runner": "ubuntu-24.04"
+            }]')
+        done
+        for img in "${multi_arch[@]}"; do
+          combos=$(echo "$combos" | jq -c \
+            --arg image "$img" \
+            '. + [
+              {"image": $image, "arch": "x86_64", "runner": "ubuntu-24.04"},
+              {"image": $image, "arch": "aarch64", "runner": "ubuntu-24.04-arm"}
+            ]')
+        done
+
+        # Multi-arch image names list
+        multi_arch_json="$(jq --null-input --compact-output \
+          '$ARGS.positional' --args "${multi_arch[@]}")"
 
         # Output
-        echo "images=$images" >> "$GITHUB_OUTPUT"
+        echo "images=$combos" >> "$GITHUB_OUTPUT"
+        echo "multi_arch_images=$multi_arch_json" >> "$GITHUB_OUTPUT"

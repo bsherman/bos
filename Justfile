@@ -132,9 +132,9 @@ build image="bluefin":
 
     VERSION="{{ image }}-${fedora_version}.$(date +%Y%m%d)"
     skopeo list-tags docker://ghcr.io/{{ repo_name }}/{{ repo_image_name }} > /tmp/repotags.json
-    if [[ $(jq "any(.Tags[]; contains(\"$VERSION\"))" < /tmp/repotags.json) == "true" ]]; then
+    if [[ $(jq "any(.Tags[]; . == \"$VERSION\" or startswith(\"${VERSION}-\"))" < /tmp/repotags.json) == "true" ]]; then
         POINT="1"
-        while jq -e "any(.Tags[]; contains(\"$VERSION.$POINT\"))" < /tmp/repotags.json
+        while jq -e "any(.Tags[]; . == \"$VERSION.$POINT\" or startswith(\"${VERSION}.${POINT}-\"))" < /tmp/repotags.json
         do
             (( POINT++ ))
         done

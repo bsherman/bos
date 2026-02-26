@@ -17,11 +17,16 @@ images := '(
     [bluefin-lts]="bluefin-dx"
     [bluefin]="bluefin-dx"
     [bluefin-nvidia]="bluefin-dx-nvidia-open"
-    [ucore-minimal]="lts"
-    [ucore-hci]="lts"
-    [ucore-hci-nvidia]="lts-nvidia"
-    [ucore]="lts"
-    [ucore-nvidia]="lts-nvidia"
+    [ucore-minimal]="stable"
+    [ucore-hci]="stable"
+    [ucore-hci-nvidia]="stable-nvidia"
+    [ucore]="stable"
+    [ucore-nvidia]="stable-nvidia"
+    [ucore-minimal-lts]="lts"
+    [ucore-hci-lts]="lts"
+    [ucore-hci-lts-nvidia]="lts-nvidia"
+    [ucore-lts]="lts"
+    [ucore-lts-nvidia]="lts-nvidia"
 )'
 export SUDO_DISPLAY := if `if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then echo true; fi` == "true" { "true" } else { "false" }
 export SUDOIF := if `id -u` == "0" { "" } else if SUDO_DISPLAY == "true" { "sudo --askpass" } else { "sudo" }

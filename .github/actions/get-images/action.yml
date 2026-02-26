@@ -32,6 +32,8 @@ runs:
         "Server")
           images+=("ucore-minimal" "ucore" "ucore-nvidia")
           images+=("ucore-hci" "ucore-hci-nvidia")
+          images+=("ucore-minimal-lts" "ucore-lts" "ucore-lts-nvidia")
+          images+=("ucore-hci-lts" "ucore-hci-lts-nvidia")
           ;;
         esac
 

@@ -123,6 +123,18 @@ jobs:
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
           echo "is_multi_arch=$IS_MULTI" >> $GITHUB_OUTPUT
 
+      - name: Tag Images for Multi-Arch Push
+        if: steps.push_tags.outputs.is_multi_arch == 'true'
+        shell: bash
+        run: |
+          ORIG_TAGS="${{ steps.get_tags.outputs.tags }}"
+          ARCH="${{ matrix.combo.arch }}"
+          for tag in $ORIG_TAGS; do
+            podman tag \
+              ${{ env.IMAGE_NAME }}:${tag} \
+              ${{ env.IMAGE_NAME }}:${tag}-${ARCH}
+          done
+
       # NOTE: disabled secureboot check since bluefin LTS will never pass
       # - name: Check Secureboot
       #  id: secureboot

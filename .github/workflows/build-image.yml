@@ -274,7 +274,8 @@ jobs:
             --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
             "docker://${IMAGE}:${{ matrix.image }}" \
             | sha256sum | awk '{print "sha256:"$1}')
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY \
+          cosign sign -y --recursive \
+            --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE}@${DIGEST}"
 
           # Sign version manifest
@@ -282,7 +283,8 @@ jobs:
             --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
             "docker://${IMAGE}:${VERSION}" \
             | sha256sum | awk '{print "sha256:"$1}')
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY \
+          cosign sign -y --recursive \
+            --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE}@${DIGEST}"
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}

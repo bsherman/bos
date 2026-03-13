@@ -82,12 +82,12 @@ jobs:
         run: |
           # note: if disabling rechunker, must also disable sudo call
           # just build ${{ matrix.combo.image }}
-          sudo just build ${{ matrix.combo.image }}
+          sudo env PATH="$PATH" just build ${{ matrix.combo.image }}
 
       - name: Rechunk Image
         shell: bash
         run: |
-          sudo just rechunk ${{ matrix.combo.image }}
+          sudo env PATH="$PATH" just rechunk ${{ matrix.combo.image }}
 
       - name: Load and Tag Image
         shell: bash

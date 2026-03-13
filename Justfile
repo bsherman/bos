@@ -164,6 +164,9 @@ build image="bluefin":
     echo "::endgroup::"
 
     echo "::group:: Container Build"
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        BUILD_ARGS+=("--secret" "id=GITHUB_TOKEN,env=GITHUB_TOKEN")
+    fi
     {{ PODMAN }} build "${BUILD_ARGS[@]}" .
     echo "::endgroup::"
 

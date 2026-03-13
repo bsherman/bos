@@ -14,4 +14,5 @@ ARG VERSION=""
 ARG DNF=""
 
 RUN --mount=type=bind,from=ctx,src=/,dst=/ctx \
+    --mount=type=secret,id=GITHUB_TOKEN \
     /ctx/build.sh

@@ -44,8 +44,15 @@ set ${SET_X:+-x} -eou pipefail
 API_JSON=$(mktemp /tmp/api-XXXXXXXX.json)
 API="https://api.github.com/repos/${ORG_PROJ}/releases/${RELTAG}"
 
+# Read GitHub token from secret mount if available (authenticates API to avoid rate limits)
+CURL_AUTH_ARGS=()
+if [[ -r /run/secrets/GITHUB_TOKEN ]]; then
+    GITHUB_TOKEN=$(</run/secrets/GITHUB_TOKEN)
+    CURL_AUTH_ARGS=("-H" "Authorization: Bearer ${GITHUB_TOKEN}")
+fi
 # retry up to 5 times with 5 second delays for any error included HTTP 404 etc
-curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sL "${API}" -o "${API_JSON}"
+curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sL \
+    "${CURL_AUTH_ARGS[@]}" "${API}" -o "${API_JSON}"
 TGZ_URLS=$(jq \
     -r \
     --arg arch_filter "${ARCH_FILTER}" \

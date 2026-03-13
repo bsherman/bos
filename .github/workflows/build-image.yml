@@ -79,6 +79,8 @@ jobs:
 
       - name: Build Image
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           # note: if disabling rechunker, must also disable sudo call
           # just build ${{ matrix.combo.image }}

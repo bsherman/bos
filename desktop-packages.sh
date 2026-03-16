@@ -25,7 +25,26 @@ $DNF install --setopt=install_weak_deps=False -y \
     jetbrains-mono-fonts-all \
     powerline-fonts
 
-if [[ ${IMAGE} =~ bazzite-gnome|bluefin|aurora ]]; then
+if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
     $DNF install --setopt=install_weak_deps=False -y \
         gnome-shell-extension-no-overview
+#elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
+fi
+
+if [ -f /etc/yum.repos.d/terra.repo ]; then
+    $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
+        ghostty \
+        ghostty-bash-completion \
+        ghostty-shell-integration \
+        ghostty-terminfo \
+        ghostty-vim \
+        rsms-inter-vf-fonts.noarch \
+        zed
+    if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
+        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
+            ghostty-nautilus
+    elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
+        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
+            ghostty-kio
+    fi
 fi

@@ -38,7 +38,7 @@ if [ -f /etc/yum.repos.d/terra.repo ]; then
         ghostty-shell-integration \
         ghostty-terminfo \
         ghostty-vim \
-        rsms-inter-vf-fonts.noarch \
+        rsms-inter-vf-fonts \
         zed
     if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
         $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \

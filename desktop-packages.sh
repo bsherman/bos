@@ -32,7 +32,9 @@ if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
 fi
 
 if [ -f /etc/yum.repos.d/terra.repo ]; then
-    $DNF install --from-repo=terra --enable-repo=terra --setopt=install_weak_deps=False -y \
+    # import terra GPG key so dnf5 can verify repo metadata
+    rpm --import "https://repos.fyralabs.com/terra$(rpm -E %fedora)/key.asc"
+    $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
         ghostty \
         ghostty-bash-completion \
         ghostty-shell-integration \
@@ -41,10 +43,10 @@ if [ -f /etc/yum.repos.d/terra.repo ]; then
         rsms-inter-vf-fonts \
         zed
     if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
-        $DNF install --from-repo=terra --enable-repo=terra --setopt=install_weak_deps=False -y \
+        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
             ghostty-nautilus
     elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
-        $DNF install --from-repo=terra --enable-repo=terra --setopt=install_weak_deps=False -y \
+        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
             ghostty-kio
     fi
 fi

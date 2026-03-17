@@ -38,12 +38,6 @@ if [ -f /etc/yum.repos.d/terra.repo ]; then
         -e 's/^metalink=/#metalink=/' \
         -e 's/^#baseurl=/baseurl=/' \
         /etc/yum.repos.d/terra.repo
-    # Update the terra GPG key file so repo_gpgcheck can verify repomd.xml.
-    # The key shipped in the base image may be stale if terra has rotated it.
-    TERRA_KEY="/etc/pki/rpm-gpg/RPM-GPG-KEY-terra$(rpm -E %fedora)"
-    TERRA_KEY_URL="https://repos.fyralabs.com/terra$(rpm -E %fedora)/key.asc"
-    curl -fsSLo "${TERRA_KEY}" "${TERRA_KEY_URL}"
-    rpm --import "${TERRA_KEY}"
     $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
         ghostty \
         ghostty-bash-completion \

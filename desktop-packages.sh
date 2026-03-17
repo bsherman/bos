@@ -33,6 +33,11 @@ if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
 fi
 
 if [ -f /etc/yum.repos.d/terra.repo ]; then
+    # Disable metalink in favor of baseurl for reliability
+    sed -i \
+        -e 's/^metalink=/#metalink=/' \
+        -e 's/^#baseurl=/baseurl=/' \
+        /etc/yum.repos.d/terra.repo
     # import terra GPG key so dnf5 can verify repo metadata
     rpm --import "https://repos.fyralabs.com/terra$(rpm -E %fedora)/key.asc"
     $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \

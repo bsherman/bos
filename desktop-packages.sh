@@ -38,7 +38,8 @@ if [ -f /etc/yum.repos.d/terra.repo ]; then
         -e 's/^metalink=/#metalink=/' \
         -e 's/^#baseurl=/baseurl=/' \
         /etc/yum.repos.d/terra.repo
-    $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
+    $DNF install --from-repo=terra --setopt=install_weak_deps=False \
+        --setopt=repo_gpgcheck=0 -y \
         ghostty \
         ghostty-bash-completion \
         ghostty-shell-integration \
@@ -46,10 +47,12 @@ if [ -f /etc/yum.repos.d/terra.repo ]; then
         ghostty-vim \
         zed
     if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
-        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
+        $DNF install --from-repo=terra --setopt=install_weak_deps=False \
+            --setopt=repo_gpgcheck=0 -y \
             ghostty-nautilus
     elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
-        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
+        $DNF install --from-repo=terra --setopt=install_weak_deps=False \
+            --setopt=repo_gpgcheck=0 -y \
             ghostty-kio
     fi
 fi

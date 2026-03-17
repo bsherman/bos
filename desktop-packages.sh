@@ -50,8 +50,6 @@ if [ -f /etc/yum.repos.d/terra.repo ]; then
     if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
         $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
             ghostty-nautilus
-    elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
-        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
-            ghostty-kio
+    #elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
     fi
 fi

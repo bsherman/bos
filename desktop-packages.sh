@@ -33,13 +33,14 @@ if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
 fi
 
 if [ -f /etc/yum.repos.d/terra.repo ]; then
-    # Disable metalink in favor of baseurl for reliability
+    # Disable metalink in favor of baseurl for reliability;
+    # disable repo_gpgcheck to avoid key fetch failures at build time
     sed -i \
         -e 's/^metalink=/#metalink=/' \
         -e 's/^#baseurl=/baseurl=/' \
+        -e 's/^repo_gpgcheck=.*/repo_gpgcheck=0/' \
         /etc/yum.repos.d/terra.repo
-    $DNF install --from-repo=terra --setopt=install_weak_deps=False \
-        --setopt=repo_gpgcheck=0 -y \
+    $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
         ghostty \
         ghostty-bash-completion \
         ghostty-shell-integration \
@@ -47,12 +48,10 @@ if [ -f /etc/yum.repos.d/terra.repo ]; then
         ghostty-vim \
         zed
     if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
-        $DNF install --from-repo=terra --setopt=install_weak_deps=False \
-            --setopt=repo_gpgcheck=0 -y \
+        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
             ghostty-nautilus
     elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
-        $DNF install --from-repo=terra --setopt=install_weak_deps=False \
-            --setopt=repo_gpgcheck=0 -y \
+        $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
             ghostty-kio
     fi
 fi

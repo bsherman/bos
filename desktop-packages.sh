@@ -23,14 +23,14 @@ EOF
 $DNF install --setopt=install_weak_deps=False -y \
     code \
     jetbrains-mono-fonts-all \
-    libgda \
-    libgda-sqlite \
     powerline-fonts \
     rsms-inter-vf-fonts
 
 if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
     $DNF install --setopt=install_weak_deps=False -y \
-        gnome-shell-extension-no-overview
+        gnome-shell-extension-no-overview \
+        libgda \
+        libgda-sqlite
 #elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
 fi
 

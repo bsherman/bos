@@ -43,6 +43,10 @@ echo "::endgroup::"
 #/ctx/branding.sh
 #echo "::endgroup::"
 
+echo "::group:: ===Common Groups==="
+/ctx/common-groups.sh
+echo "::endgroup::"
+
 echo "::group:: ===Container Signing==="
 /ctx/signing.sh
 echo "::endgroup::"

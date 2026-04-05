@@ -45,22 +45,4 @@ if [[ ${IMAGE} =~ ucore-hci ]]; then
     tar --zstd -xvf /tmp/data.tar.zst
     mv /opt/incus /usr/lib/
     sed -i 's@\[Service\]@\[Service\]\nEnvironment=INCUS_UI=/usr/lib/incus/ui/@g' /usr/lib/systemd/system/incus.service
-
-    # Groups
-    groupmod -g 250 incus-admin
-    groupmod -g 251 incus
-fi
-
-
-if getent group "docker" > /dev/null 2>&1; then
-    # If "docker" exists in /usr/lib/group but not in /etc/group
-    if ! grep -q "^docker:" /etc/group && grep -q "^docker:" /usr/lib/group; then
-        # Add the group from /usr/lib/group to /etc/group
-        grep "^docker:" /usr/lib/group >> /etc/group
-    fi
-
-    # If "docker" exists in /etc/group, modify the group ID
-    if grep -q "^docker:" /etc/group; then
-        groupmod -g 252 docker
-    fi
 fi

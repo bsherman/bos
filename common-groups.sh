@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-set ${SET_X:+-x} -euo pipefail
+#set ${SET_X:+-x} -euo pipefail
+set -euo pipefail
 
 echo "Running common-groups modifications..."
 

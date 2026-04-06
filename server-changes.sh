@@ -13,6 +13,7 @@ if [[ ${IMAGE} =~ ucore ]]; then
 
     # remove group created by moby
     sed -i '/^docker:/d' /etc/group
+    sed -i '/^docker:/d' /etc/gshadow
     sed -i '/^docker:/d' /usr/lib/group
 
     # Temporarily remove cockpit-zfs plugin

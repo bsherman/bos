@@ -5,6 +5,9 @@ on:  # yamllint disable-line rule:truthy
     inputs:
       image_flavor:
         type: string
+      publish_schedule:
+        type: string
+        default: '41 6 * * 0'
 concurrency:
   group: >-
     ${{ github.workflow }}-${{ github.ref
@@ -153,7 +156,7 @@ jobs:
         id: push
         if: >-
           contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == '41 6 * * 0'
+          github.event_name) || github.event.schedule == inputs.publish_schedule
         env:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ github.token }}
@@ -173,7 +176,7 @@ jobs:
         uses: docker/login-action@v3
         if: >-
           (contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == '41 6 * * 0')
+          github.event_name) || github.event.schedule == inputs.publish_schedule)
           && steps.push_tags.outputs.is_multi_arch != 'true'
         with:
           registry: ghcr.io
@@ -185,12 +188,12 @@ jobs:
           cosign-release: 'v2.6.1'
         if: >-
           (contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == '41 6 * * 0')
+          github.event_name) || github.event.schedule == inputs.publish_schedule)
           && steps.push_tags.outputs.is_multi_arch != 'true'
       - name: Sign Container Image
         if: >-
           (contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == '41 6 * * 0')
+          github.event_name) || github.event.schedule == inputs.publish_schedule)
           && steps.push_tags.outputs.is_multi_arch != 'true'
         run: |
           REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
@@ -206,7 +209,7 @@ jobs:
     needs: [get-images, build-image]
     if: >-
       (contains(fromJson('["workflow_dispatch", "merge_group"]'),
-      github.event_name) || github.event.schedule == '41 6 * * 0')
+      github.event_name) || github.event.schedule == inputs.publish_schedule)
       && needs.get-images.outputs.multi_arch_images != '[]'
     runs-on: ubuntu-latest
     permissions:

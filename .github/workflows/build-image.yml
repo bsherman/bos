@@ -173,7 +173,7 @@ jobs:
             extra-args: |
               --disable-content-trust
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         if: >-
           (contains(fromJson('["workflow_dispatch", "merge_group"]'),
           github.event_name) || github.event.schedule == inputs.publish_schedule)
@@ -227,7 +227,7 @@ jobs:
         with:
           string: ${{ env.IMAGE_REGISTRY }}
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

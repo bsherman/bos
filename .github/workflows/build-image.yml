@@ -183,7 +183,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.0.0
+        uses: sigstore/cosign-installer@v4.1.1
         with:
           cosign-release: 'v2.6.1'
         if: >-
@@ -265,7 +265,7 @@ jobs:
             "${IMAGE}:${VERSION}-aarch64"
           docker manifest push "${IMAGE}:${VERSION}"
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.0.0
+        uses: sigstore/cosign-installer@v4.1.1
         with:
           cosign-release: 'v2.6.1'
       - name: Sign Manifests

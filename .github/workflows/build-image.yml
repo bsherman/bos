@@ -148,7 +148,7 @@ jobs:
       #    just secureboot ${{ matrix.combo.image }}
       - name: Lowercase Registry
         id: registry_case
-        uses: ASzc/change-string-case-action@v6
+        uses: ASzc/change-string-case-action@v8
         with:
           string: ${{ env.IMAGE_REGISTRY }}
       - name: Push to GHCR
@@ -223,7 +223,7 @@ jobs:
     steps:
       - name: Lowercase Registry
         id: registry_case
-        uses: ASzc/change-string-case-action@v6
+        uses: ASzc/change-string-case-action@v8
         with:
           string: ${{ env.IMAGE_REGISTRY }}
       - name: Login to GitHub Container Registry

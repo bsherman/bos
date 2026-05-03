@@ -9,6 +9,9 @@ echo "Running desktop packages scripts..."
 $DNF -y copr enable ublue-os/packages
 $DNF -y copr enable ublue-os/staging
 
+# needed for sunshine
+$DNF -y copr enable lizardbyte/beta
+
 # VSCode because it's still better for a lot of things
 tee /etc/yum.repos.d/vscode.repo <<'EOF'
 [code]
@@ -22,9 +25,11 @@ EOF
 # common packages installed to desktops
 $DNF install --setopt=install_weak_deps=False -y \
     code \
+    source-foundry-hack-fonts \
     jetbrains-mono-fonts-all \
     powerline-fonts \
-    rsms-inter-vf-fonts
+    rsms-inter-vf-fonts \
+    sunshine
 
 if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
     $DNF install --setopt=install_weak_deps=False -y \

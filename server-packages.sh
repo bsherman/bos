@@ -8,6 +8,8 @@ if [ -e /.git ]; then
     rm -fr /.git
 fi
 
+$DNF -y copr enable varlad/zellij
+
 # common packages installed to desktops and servers
 $DNF install -y \
     7zip \
@@ -30,6 +32,7 @@ $DNF install -y \
     udica \
     unrar-free \
     unzip \
+    zellij \
     zip
 
 /ctx/github-release-install.sh frostyard/updex "$(uname -m).rpm"

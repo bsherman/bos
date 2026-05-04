@@ -36,7 +36,10 @@ if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
         gnome-shell-extension-no-overview \
         libgda \
         libgda-sqlite
-#elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
+elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
+    $DNF install -y \
+        plasma-discover \
+        plasma-discover-kns
 fi
 
 if [ -f /etc/yum.repos.d/terra.repo ]; then

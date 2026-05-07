@@ -80,6 +80,11 @@ jobs:
       - name: Show disk space (after cleanup)
         run: sudo df -h
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.1
+        with:
+          cosign-release: 'v2.6.1'
+
       - name: Build Image
         shell: bash
         env:
@@ -184,14 +189,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.1.1
-        with:
-          cosign-release: 'v2.6.1'
-        if: >-
-          (contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == inputs.publish_schedule)
-          && steps.push_tags.outputs.is_multi_arch != 'true'
       - name: Sign Container Image
         if: >-
           (contains(fromJson('["workflow_dispatch", "merge_group"]'),

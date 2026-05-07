@@ -465,19 +465,10 @@ changelogs branch="stable" urlmd="" handwritten="":
 verify-container container="" registry="ghcr.io/ublue-os" key="":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
-    # Get Cosign if Needed
-    if [[ ! $(command -v cosign) ]]; then
-        COSIGN_CONTAINER_ID=$({{ SUDOIF }} {{ PODMAN }} create ghcr.io/sigstore/cosign/cosign:v2.6.1 bash)
-        {{ SUDOIF }} {{ PODMAN }} cp "${COSIGN_CONTAINER_ID}":/ko-app/cosign /usr/local/bin/cosign
-        {{ SUDOIF }} {{ PODMAN }} rm -f "${COSIGN_CONTAINER_ID}"
-    fi
-
-    # Verify Cosign Image Signatures if needed
-    if [[ -n "${COSIGN_CONTAINER_ID:-}" ]]; then
-        if ! cosign verify --certificate-oidc-issuer=https://token.actions.githubusercontent.com --certificate-identity=https://github.com/chainguard-images/images/.github/workflows/release.yaml@refs/heads/main cgr.dev/chainguard/cosign >/dev/null; then
-            echo "NOTICE: Failed to verify cosign image signatures."
-            exit 1
-        fi
+    if ! command -v cosign >/dev/null; then
+        echo "ERROR: cosign is required to verify container signatures." >&2
+        echo "Install cosign and rerun this recipe." >&2
+        exit 1
     fi
 
     # Public Key for Container Verification

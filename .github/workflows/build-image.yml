@@ -92,6 +92,7 @@ jobs:
         run: |
           # just build ${{ matrix.combo.image }}
           sudo env \
+            XDG_RUNTIME_DIR=/tmp \
             PATH="$PATH" \
             GITHUB_TOKEN="$GITHUB_TOKEN" \
             just build ${{ matrix.combo.image }}
@@ -99,12 +100,15 @@ jobs:
       - name: Chunk Image
         shell: bash
         run: |
-          sudo env PATH="$PATH" just chunk ${{ matrix.combo.image }}
+          sudo env \
+            XDG_RUNTIME_DIR=/tmp \
+            PATH="$PATH" \
+            just chunk ${{ matrix.combo.image }}
 
-      - name: Load and Tag Image
+      - name: Load Chunked OCI
         shell: bash
         run: |
-          just load-image ${{ matrix.combo.image }}
+          just load-chunked-oci ${{ matrix.combo.image }}
 
       - name: Get Tags
         id: get_tags

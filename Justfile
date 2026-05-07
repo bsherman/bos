@@ -189,7 +189,7 @@ build image="bluefin":
     {{ PODMAN }} rmi ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}"
 
 # Chunk Image
-[private]
+[group('Image')]
 chunk image="bluefin":
     #!/usr/bin/env bash
     echo "::group:: Chunk Build Prep"
@@ -237,19 +237,21 @@ chunk image="bluefin":
     printf '%s\n' "$VERSION" > version.txt
     chmod 0644 "${OCI_ARCHIVE}" version.txt || true
     {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
-    just load-image {{ image }}
     echo "::endgroup::"
 
-# Load Image into Podman and Tag
-[private]
-load-image image="bluefin":
+# Load Chunked OCI into Podman and Tag
+[group('Image')]
+load-chunked-oci image="bluefin":
     #!/usr/bin/env bash
+    echo "::group:: Load Chunked OCI"
     set ${SET_X:+-x} -eou pipefail
+    echo "Loading chunked OCI archive {{ repo_image_name }}_{{ image }}.oci into Podman and applying tags"
     {{ PODMAN }} load --input {{ repo_image_name }}_{{ image }}.oci
     VERSION=$({{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
     {{ PODMAN }} tag localhost/{{ repo_image_name }}:{{ image }} localhost/{{ repo_image_name }}:"${VERSION}"
     {{ PODMAN }} images
     rm -f {{ repo_image_name }}_{{ image }}.oci version.txt
+    echo "::endgroup::"
 
 # Get Tags
 get-tags image="bluefin":

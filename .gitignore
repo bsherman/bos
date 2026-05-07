@@ -1,4 +1,6 @@
 cosign.key
+AGENTS.md
 CLAUDE.md
 bos_*.oci
+bos_*.config.json
 version.txt

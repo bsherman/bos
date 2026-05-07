@@ -33,7 +33,7 @@ export SUDOIF := if `id -u` == "0" { "" } else if SUDO_DISPLAY == "true" { "sudo
 export SET_X := if `id -u` == "0" { "1" } else { env('SET_X', '') }
 export PODMAN := if path_exists("/usr/bin/podman") == "true" { env("PODMAN", "/usr/bin/podman") } else if path_exists("/usr/bin/docker") == "true" { env("PODMAN", "docker") } else { env("PODMAN", "exit 1 ; ") }
 export PULL_POLICY := if PODMAN =~ "docker" { "missing" } else { "newer" }
-chunkah_image := env("CHUNKAH_IMAGE", "quay.io/coreos/chunkah:v0.4.0")
+chunkah_image := env("CHUNKAH_IMAGE", "quay.io/coreos/chunkah:v0.5.0")
 
 [private]
 default:
@@ -206,22 +206,16 @@ chunk image="bluefin":
         just build {{ image }}
     fi
 
-    if [[ "${UID}" -gt "0" && ! {{ PODMAN }} =~ docker ]]; then
-        COPYTMP="$(mktemp -p "${PWD}" -d -t podman_scp.XXXXXXXXXX)"
-        {{ SUDOIF }} TMPDIR="${COPYTMP}" {{ PODMAN }} image scp "${UID}"@localhost::localhost/{{ repo_image_name }}:{{ image }} root@localhost::localhost/{{ repo_image_name }}:{{ image }}
-        rm -rf "${COPYTMP}"
-    fi
-
     OUT_NAME="{{ repo_image_name }}_{{ image }}"
-    VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')"
+    VERSION="$({{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')"
     CONFIG_JSON="${OUT_NAME}.config.json"
     OCI_ARCHIVE="${OUT_NAME}.oci"
     rm -f "${CONFIG_JSON}" "${OCI_ARCHIVE}"
-    {{ SUDOIF }} {{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | tee "${CONFIG_JSON}" >/dev/null
+    {{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | tee "${CONFIG_JSON}" >/dev/null
     echo "::endgroup::"
 
     echo "::group:: Chunk Image"
-    {{ SUDOIF }} {{ PODMAN }} run --rm \
+    {{ PODMAN }} run --rm \
         --pull={{ PULL_POLICY }} \
         --security-opt label=disable \
         --mount type=image,src=localhost/{{ repo_image_name }}:{{ image }},destination=/chunkah \
@@ -236,25 +230,14 @@ chunk image="bluefin":
         --label ostree.final-diffid- \
         --tag localhost/{{ repo_image_name }}:{{ image }} \
         --output "/workspace/${OCI_ARCHIVE}"
-    if [[ "${UID}" -gt "0" ]]; then
-        {{ SUDOIF }} {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
-    elif [[ "${UID}" == "0" && -n "${SUDO_USER:-}" ]]; then
-        {{ SUDOIF }} {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
-    fi
     echo "::endgroup::"
 
     echo "::group:: Cleanup"
     rm -f "${CONFIG_JSON}"
     printf '%s\n' "$VERSION" > version.txt
-    {{ SUDOIF }} chmod 0644 "${OCI_ARCHIVE}" version.txt || true
-    if [[ "${UID}" -gt "0" ]]; then
-        {{ SUDOIF }} chown -R "${UID}":"${GROUPS[0]}" "${PWD}"
-        just load-image {{ image }}
-    elif [[ "${UID}" == "0" && -n "${SUDO_USER:-}" ]]; then
-        {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "/run/user/${SUDO_UID}/just"
-        {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "${PWD}"
-    fi
-
+    chmod 0644 "${OCI_ARCHIVE}" version.txt || true
+    {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
+    just load-image {{ image }}
     echo "::endgroup::"
 
 # Load Image into Podman and Tag

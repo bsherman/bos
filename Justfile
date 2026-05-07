@@ -32,6 +32,8 @@ export SUDO_DISPLAY := if `if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-
 export SUDOIF := if `id -u` == "0" { "" } else if SUDO_DISPLAY == "true" { "sudo --askpass" } else { "sudo" }
 export SET_X := if `id -u` == "0" { "1" } else { env('SET_X', '') }
 export PODMAN := if path_exists("/usr/bin/podman") == "true" { env("PODMAN", "/usr/bin/podman") } else if path_exists("/usr/bin/docker") == "true" { env("PODMAN", "docker") } else { env("PODMAN", "exit 1 ; ") }
+export PULL_POLICY := if PODMAN =~ "docker" { "missing" } else { "newer" }
+chunkah_image := env("CHUNKAH_IMAGE", "quay.io/coreos/chunkah:v0.4.0")
 
 [private]
 default:
@@ -82,6 +84,11 @@ build image="bluefin":
         exit 1
     fi
     BUILD_ARGS=()
+    TMPFILES=()
+    cleanup_tmpfiles() {
+        rm -f "${TMPFILES[@]}"
+    }
+    trap cleanup_tmpfiles EXIT
     DIST_ABRV=fc
     DNF=dnf5
 
@@ -125,16 +132,20 @@ build image="bluefin":
         ;;
     *)
         just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > /tmp/inspect-"{{ image }}".json
-        fedora_version="$(jq -r '.Labels["org.opencontainers.image.version"]' < /tmp/inspect-{{ image }}.json | grep -oP '^\K[0-9]+')"
+        inspect_json="$(mktemp -t inspect-{{ image }}.XXXXXXXXXX.json)"
+        TMPFILES+=("${inspect_json}")
+        skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > "${inspect_json}"
+        fedora_version="$(jq -r '.Labels["org.opencontainers.image.version"]' < "${inspect_json}" | grep -oP '^\K[0-9]+')"
         ;;
     esac
 
     VERSION="{{ image }}-${fedora_version}.$(date +%Y%m%d)"
-    skopeo list-tags docker://ghcr.io/{{ repo_name }}/{{ repo_image_name }} > /tmp/repotags.json
-    if [[ $(jq "any(.Tags[]; . == \"$VERSION\" or startswith(\"${VERSION}-\"))" < /tmp/repotags.json) == "true" ]]; then
+    repotags_json="$(mktemp -t repotags.XXXXXXXXXX.json)"
+    TMPFILES+=("${repotags_json}")
+    skopeo list-tags docker://ghcr.io/{{ repo_name }}/{{ repo_image_name }} > "${repotags_json}"
+    if [[ $(jq "any(.Tags[]; . == \"$VERSION\" or startswith(\"${VERSION}-\"))" < "${repotags_json}") == "true" ]]; then
         POINT="1"
-        while jq -e "any(.Tags[]; . == \"$VERSION.$POINT\" or startswith(\"${VERSION}.${POINT}-\"))" < /tmp/repotags.json
+        while jq -e "any(.Tags[]; . == \"$VERSION.$POINT\" or startswith(\"${VERSION}.${POINT}-\"))" < "${repotags_json}"
         do
             (( POINT++ ))
         done
@@ -171,21 +182,21 @@ build image="bluefin":
     echo "::endgroup::"
 
     echo "::group:: Tag Image with Version"
-    {{ PODMAN }} tag localhost/{{ repo_image_name }}:{{ image }} localhost/{{ repo_image_name }}:${VERSION}
+    {{ PODMAN }} tag localhost/{{ repo_image_name }}:{{ image }} localhost/{{ repo_image_name }}:"${VERSION}"
     {{ PODMAN }} images
     echo "::endgroup::"
 
     {{ PODMAN }} rmi ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}"
 
-# Rechunk Image
+# Chunk Image
 [private]
-rechunk image="bluefin":
+chunk image="bluefin":
     #!/usr/bin/env bash
-    echo "::group:: Rechunk Build Prep"
+    echo "::group:: Chunk Build Prep"
     set ${SET_X:+-x} -eou pipefail
 
     if [[ ! {{ PODMAN }} =~ podman ]]; then
-        echo "Rechunk only supported with podman. Exiting..."
+        echo "Chunking only supported with podman. Exiting..."
         exit 0
     fi
 
@@ -201,69 +212,41 @@ rechunk image="bluefin":
         rm -rf "${COPYTMP}"
     fi
 
-    CREF=$({{ SUDOIF }} {{ PODMAN }} create localhost/{{ repo_image_name }}:{{ image }} bash)
-    MOUNT=$({{ SUDOIF }} {{ PODMAN }} mount "$CREF")
     OUT_NAME="{{ repo_image_name }}_{{ image }}"
-    VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect "$CREF" | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')"
-    LABELS="
-    org.opencontainers.image.title={{ repo_image_name }}:{{ image }}
-    org.opencontainers.image.revision=$(git rev-parse HEAD)
-    org.opencontainers.image.description={{ repo_image_name }} is my OCI image built from ublue projects. It mainly extends them for my uses.
-    "
+    VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')"
+    CONFIG_JSON="${OUT_NAME}.config.json"
+    OCI_ARCHIVE="${OUT_NAME}.oci"
+    rm -f "${CONFIG_JSON}" "${OCI_ARCHIVE}"
+    {{ SUDOIF }} {{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | tee "${CONFIG_JSON}" >/dev/null
     echo "::endgroup::"
 
-    echo "::group:: Rechunk Prune"
+    echo "::group:: Chunk Image"
     {{ SUDOIF }} {{ PODMAN }} run --rm \
+        --pull={{ PULL_POLICY }} \
         --security-opt label=disable \
-        --volume "$MOUNT":/var/tree \
-        --env TREE=/var/tree \
-        --user 0:0 \
-        ghcr.io/hhd-dev/rechunk:latest \
-        /sources/rechunk/1_prune.sh
-    echo "::endgroup::"
-
-    echo "::group:: Create Tree"
-    {{ SUDOIF }} {{ PODMAN }} run --rm \
-        --security-opt label=disable \
-        --volume "$MOUNT":/var/tree \
-        --volume "cache_ostree:/var/ostree" \
-        --env TREE=/var/tree \
-        --env REPO=/var/ostree/repo \
-        --env RESET_TIMESTAMP=1 \
-        --user 0:0 \
-        ghcr.io/hhd-dev/rechunk:latest \
-        /sources/rechunk/2_create.sh
-    {{ SUDOIF }} {{ PODMAN }} unmount "$CREF"
-    {{ SUDOIF }} {{ PODMAN }} rm "$CREF"
+        --mount type=image,src=localhost/{{ repo_image_name }}:{{ image }},destination=/chunkah \
+        --volume "$PWD:/workspace" \
+        --volume "$PWD/${CONFIG_JSON}:/config.json:ro" \
+        {{ chunkah_image }} \
+        build \
+        --config /config.json \
+        --prune /sysroot/ \
+        --max-layers 128 \
+        --label ostree.commit- \
+        --label ostree.final-diffid- \
+        --tag localhost/{{ repo_image_name }}:{{ image }} \
+        --output "/workspace/${OCI_ARCHIVE}"
     if [[ "${UID}" -gt "0" ]]; then
         {{ SUDOIF }} {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
+    elif [[ "${UID}" == "0" && -n "${SUDO_USER:-}" ]]; then
+        {{ SUDOIF }} {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
     fi
-    {{ PODMAN }} rmi localhost/{{ repo_image_name }}:{{ image }}
-    echo "::endgroup::"
-
-    echo "::group:: Rechunk"
-    {{ SUDOIF }} {{ PODMAN }} run --rm \
-        --pull=newer \
-        --security-opt label=disable \
-        --volume "$PWD:/workspace" \
-        --volume "$PWD:/var/git" \
-        --volume cache_ostree:/var/ostree \
-        --env REPO=/var/ostree/repo \
-        --env PREV_REF=ghcr.io/{{ repo_name }}/{{ repo_image_name }}:{{ image }} \
-        --env LABELS="$LABELS" \
-        --env OUT_NAME="$OUT_NAME" \
-        --env VERSION="$VERSION" \
-        --env VERSION_FN=/workspace/version.txt \
-        --env OUT_REF="oci:$OUT_NAME" \
-        --env GIT_DIR="/var/git" \
-        --user 0:0 \
-        ghcr.io/hhd-dev/rechunk:latest \
-        /sources/rechunk/3_chunk.sh
     echo "::endgroup::"
 
     echo "::group:: Cleanup"
-    {{ SUDOIF }} find {{ repo_image_name }}_{{ image }} -type d -exec chmod 0755 {} \; || true
-    {{ SUDOIF }} find {{ repo_image_name }}_{{ image }}* -type f -exec chmod 0644 {} \; || true
+    rm -f "${CONFIG_JSON}"
+    printf '%s\n' "$VERSION" > version.txt
+    {{ SUDOIF }} chmod 0644 "${OCI_ARCHIVE}" version.txt || true
     if [[ "${UID}" -gt "0" ]]; then
         {{ SUDOIF }} chown -R "${UID}":"${GROUPS[0]}" "${PWD}"
         just load-image {{ image }}
@@ -272,7 +255,6 @@ rechunk image="bluefin":
         {{ SUDOIF }} chown -R "${SUDO_UID}":"${SUDO_GID}" "${PWD}"
     fi
 
-    {{ SUDOIF }} {{ PODMAN }} volume rm cache_ostree
     echo "::endgroup::"
 
 # Load Image into Podman and Tag
@@ -280,12 +262,11 @@ rechunk image="bluefin":
 load-image image="bluefin":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
-    IMAGE=$({{ PODMAN }} pull oci:${PWD}/{{ repo_image_name }}_{{ image }})
-    {{ PODMAN }} tag ${IMAGE} localhost/{{ repo_image_name }}:{{ image }}
-    VERSION=$({{ PODMAN }} inspect $IMAGE | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
-    {{ PODMAN }} tag ${IMAGE} localhost/{{ repo_image_name }}:${VERSION}
+    {{ PODMAN }} load --input {{ repo_image_name }}_{{ image }}.oci
+    VERSION=$({{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
+    {{ PODMAN }} tag localhost/{{ repo_image_name }}:{{ image }} localhost/{{ repo_image_name }}:"${VERSION}"
     {{ PODMAN }} images
-    rm -rf {{ repo_image_name }}_{{ image }}
+    rm -f {{ repo_image_name }}_{{ image }}.oci version.txt
 
 # Get Tags
 get-tags image="bluefin":
@@ -607,6 +588,6 @@ _lint-recipe linter recipe *args:
 
 lint-recipes:
     #!/usr/bin/bash
-    for recipe in build rechunk build-iso run-iso; do
+    for recipe in build chunk build-iso run-iso; do
         just _lint-recipe "shellcheck -e SC2050,SC2194" "${recipe}" bluefin
     done

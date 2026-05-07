@@ -1,2 +1,4 @@
 cosign.key
 CLAUDE.md
+bos_*.oci
+version.txt

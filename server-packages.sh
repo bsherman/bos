@@ -33,16 +33,3 @@ $DNF install -y \
     zip
 
 /ctx/github-release-install.sh frostyard/updex "$(uname -m).rpm"
-
-if [[ ${IMAGE} =~ ucore-hci ]]; then
-    $DNF install -y incus
-
-    # Incus UI
-    curl -Lo /tmp/incus-ui-canonical.deb \
-        https://pkgs.zabbly.com/incus/stable/pool/main/i/incus/"$(curl https://pkgs.zabbly.com/incus/stable/pool/main/i/incus/ | grep -E incus-ui-canonical | cut -d '"' -f 2 | sort -r | head -1)"
-
-    ar -x --output=/tmp /tmp/incus-ui-canonical.deb
-    tar --zstd -xvf /tmp/data.tar.zst
-    mv /opt/incus /usr/lib/
-    sed -i 's@\[Service\]@\[Service\]\nEnvironment=INCUS_UI=/usr/lib/incus/ui/@g' /usr/lib/systemd/system/incus.service
-fi

@@ -1,0 +1,75 @@
+---
+name: Push Image
+description: Push a local container image to a registry with Podman.
+inputs:
+  image-ref:
+    description: Local image reference to push.
+    required: true
+  image-name:
+    description: Image name without registry.
+    required: true
+  image-tags:
+    description: Space-separated tags to apply and push.
+    required: true
+  image-registry:
+    description: Registry namespace, for example ghcr.io/owner.
+    required: true
+  compression-format:
+    description: Compression format passed to podman push.
+    required: false
+    default: zstd:chunked
+outputs:
+  registry-path:
+    description: First pushed image reference.
+    value: ${{ steps.push.outputs.registry-path }}
+  digest:
+    description: Digest of the last pushed tag.
+    value: ${{ steps.push.outputs.digest }}
+runs:
+  using: composite
+  steps:
+    - name: Push
+      id: push
+      shell: bash
+      env:
+        IMAGE_REF: ${{ inputs.image-ref }}
+        IMAGE_TAGS: ${{ inputs.image-tags }}
+        IMAGE_NAME: ${{ inputs.image-name }}
+        IMAGE_REGISTRY: ${{ inputs.image-registry }}
+        COMPRESSION_FORMAT: ${{ inputs.compression-format }}
+      run: |
+        set -eou pipefail
+
+        digestfile="$(mktemp -t push-digest.XXXXXXXXXX)"
+        first_ref=""
+        last_digest=""
+
+        for tag in ${IMAGE_TAGS}; do
+          image="${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}"
+          if [[ -z "${first_ref}" ]]; then
+            first_ref="${image}"
+          fi
+
+          podman tag "${IMAGE_REF}" "${image}"
+
+          for attempt in 1 2 3; do
+            if podman push \
+              --compression-format="${COMPRESSION_FORMAT}" \
+              --force-compression=true \
+              --digestfile "${digestfile}" \
+              "${image}"
+            then
+              break
+            fi
+
+            if [[ "${attempt}" == "3" ]]; then
+              exit 1
+            fi
+            sleep "$((5 * attempt))"
+          done
+
+          last_digest="$(cat "${digestfile}")"
+        done
+
+        echo "registry-path=${first_ref}" >> "${GITHUB_OUTPUT}"
+        echo "digest=${last_digest}" >> "${GITHUB_OUTPUT}"

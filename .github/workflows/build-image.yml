@@ -179,7 +179,6 @@ jobs:
         with:
           string: ${{ env.IMAGE_REGISTRY }}
       - name: Push to GHCR
-        uses: Wandalen/wretry.action@v3.8.0
         id: push
         if: >-
           contains(fromJson('["workflow_dispatch", "merge_group"]'),
@@ -187,18 +186,24 @@ jobs:
         env:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ github.token }}
+        shell: bash
+        run: |
+          echo "${REGISTRY_PASSWORD}" \
+            | podman login ghcr.io \
+                --username "${REGISTRY_USER}" \
+                --password-stdin
+      - name: Push Chunked Image to GHCR
+        uses: ./.github/actions/push-image
+        id: push_chunked
+        if: >-
+          contains(fromJson('["workflow_dispatch", "merge_group"]'),
+          github.event_name) || github.event.schedule == inputs.publish_schedule
         with:
-          action: redhat-actions/push-to-registry@v2
-          attempt_limit: 3
-          attempt_delay: 15000
-          with: |
-            image: ${{ env.IMAGE_NAME }}
-            tags: ${{ steps.push_tags.outputs.tags }}
-            registry: ${{ steps.registry_case.outputs.lowercase }}
-            username: ${{ env.REGISTRY_USER }}
-            password: ${{ env.REGISTRY_PASSWORD }}
-            extra-args: |
-              --disable-content-trust
+          image-ref: ${{ env.IMAGE_NAME }}:${{ matrix.combo.image }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: ${{ steps.push_tags.outputs.tags }}
+          image-registry: ${{ steps.registry_case.outputs.lowercase }}
+          compression-format: zstd:chunked
       - name: Login to GHCR for Single-Arch Signing
         uses: docker/login-action@v4
         if: >-
@@ -219,9 +224,7 @@ jobs:
           cosign sign -y --key env://COSIGN_PRIVATE_KEY \
               "${REGISTRY}/${{ env.IMAGE_NAME }}@${TAGS}"
         env:
-          TAGS: >-
-            ${{ steps.push.outputs.outputs
-            && fromJSON(steps.push.outputs.outputs).digest }}
+          TAGS: ${{ steps.push_chunked.outputs.digest }}
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
   create-manifest:
     name: Create Manifest (${{ matrix.image }})
@@ -246,11 +249,12 @@ jobs:
         with:
           string: ${{ env.IMAGE_REGISTRY }}
       - name: Login to GHCR for Manifest Signing
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | podman login ghcr.io \
+                --username "${{ github.actor }}" \
+                --password-stdin
       - name: Get Version Tag
         id: version
         run: |
@@ -265,24 +269,53 @@ jobs:
             '.Labels["org.opencontainers.image.version"]')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Create and Push Manifests
+        id: push_manifests
         run: |
           REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
           IMAGE="${REGISTRY}/${{ env.IMAGE_NAME }}"
           VERSION="${{ steps.version.outputs.version }}"
+          ANNOTATION_ARGS=(
+            --annotation
+            io.github.containers.compression.zstd=true
+          )
+          DIGESTFILE="$(mktemp -t manifest-digest.XXXXXXXXXX)"
 
-          # Create manifest for image name tag
-          docker manifest create \
+          podman manifest create "${IMAGE}:${{ matrix.image }}"
+          podman manifest add \
             "${IMAGE}:${{ matrix.image }}" \
-            "${IMAGE}:${{ matrix.image }}-x86_64" \
-            "${IMAGE}:${{ matrix.image }}-aarch64"
-          docker manifest push "${IMAGE}:${{ matrix.image }}"
+            "docker://${IMAGE}:${{ matrix.image }}-x86_64" \
+            --arch amd64 \
+            "${ANNOTATION_ARGS[@]}"
+          podman manifest add \
+            "${IMAGE}:${{ matrix.image }}" \
+            "docker://${IMAGE}:${{ matrix.image }}-aarch64" \
+            --arch arm64 \
+            "${ANNOTATION_ARGS[@]}"
+          podman manifest push \
+            --all=false \
+            --digestfile "${DIGESTFILE}" \
+            "${IMAGE}:${{ matrix.image }}"
+          IMAGE_DIGEST="$(cat "${DIGESTFILE}")"
 
-          # Create manifest for version tag
-          docker manifest create \
+          podman manifest create "${IMAGE}:${VERSION}"
+          podman manifest add \
             "${IMAGE}:${VERSION}" \
-            "${IMAGE}:${VERSION}-x86_64" \
-            "${IMAGE}:${VERSION}-aarch64"
-          docker manifest push "${IMAGE}:${VERSION}"
+            "docker://${IMAGE}:${VERSION}-x86_64" \
+            --arch amd64 \
+            "${ANNOTATION_ARGS[@]}"
+          podman manifest add \
+            "${IMAGE}:${VERSION}" \
+            "docker://${IMAGE}:${VERSION}-aarch64" \
+            --arch arm64 \
+            "${ANNOTATION_ARGS[@]}"
+          podman manifest push \
+            --all=false \
+            --digestfile "${DIGESTFILE}" \
+            "${IMAGE}:${VERSION}"
+          VERSION_DIGEST="$(cat "${DIGESTFILE}")"
+
+          echo "image_digest=${IMAGE_DIGEST}" >> "${GITHUB_OUTPUT}"
+          echo "version_digest=${VERSION_DIGEST}" >> "${GITHUB_OUTPUT}"
       - name: Install Cosign
         uses: sigstore/cosign-installer@v4.1.1
         with:
@@ -293,25 +326,17 @@ jobs:
           IMAGE="${REGISTRY}/${{ env.IMAGE_NAME }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Sign image name manifest
-          DIGEST=$(skopeo inspect --raw \
-            --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
-            "docker://${IMAGE}:${{ matrix.image }}" \
-            | sha256sum | awk '{print "sha256:"$1}')
           cosign sign -y --recursive \
             --key env://COSIGN_PRIVATE_KEY \
-            "${IMAGE}@${DIGEST}"
+            "${IMAGE}@${IMAGE_DIGEST}"
 
-          # Sign version manifest
-          DIGEST=$(skopeo inspect --raw \
-            --creds "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
-            "docker://${IMAGE}:${VERSION}" \
-            | sha256sum | awk '{print "sha256:"$1}')
           cosign sign -y --recursive \
             --key env://COSIGN_PRIVATE_KEY \
-            "${IMAGE}@${DIGEST}"
+            "${IMAGE}@${VERSION_DIGEST}"
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          IMAGE_DIGEST: ${{ steps.push_manifests.outputs.image_digest }}
+          VERSION_DIGEST: ${{ steps.push_manifests.outputs.version_digest }}
   check:
     name: Check Build ${{ inputs.image_flavor }} Images Successful
     if: ${{ !cancelled() }}

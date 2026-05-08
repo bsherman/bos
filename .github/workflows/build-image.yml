@@ -248,7 +248,7 @@ jobs:
         uses: ASzc/change-string-case-action@v8
         with:
           string: ${{ env.IMAGE_REGISTRY }}
-      - name: Login to GHCR for Manifest Signing
+      - name: Login to GHCR for Manifest Push
         shell: bash
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" \
@@ -320,6 +320,12 @@ jobs:
         uses: sigstore/cosign-installer@v4.1.1
         with:
           cosign-release: 'v2.6.1'
+      - name: Login to GHCR for Manifest Signing
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Sign Multi-Arch Manifests
         run: |
           REGISTRY="${{ steps.registry_case.outputs.lowercase }}"

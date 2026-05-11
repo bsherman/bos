@@ -81,7 +81,7 @@ jobs:
         run: sudo df -h
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.1.1
+        uses: sigstore/cosign-installer@v4.1.2
         with:
           cosign-release: 'v2.6.1'
 
@@ -317,7 +317,7 @@ jobs:
           echo "image_digest=${IMAGE_DIGEST}" >> "${GITHUB_OUTPUT}"
           echo "version_digest=${VERSION_DIGEST}" >> "${GITHUB_OUTPUT}"
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.1.1
+        uses: sigstore/cosign-installer@v4.1.2
         with:
           cosign-release: 'v2.6.1'
       - name: Login to GHCR for Manifest Signing

@@ -32,4 +32,4 @@ $DNF install -y \
     unzip \
     zip
 
-/ctx/github-release-install.sh frostyard/updex "$(uname -m).rpm"
+/ctx/build_scripts/github-release-install.sh frostyard/updex "$(uname -m).rpm"

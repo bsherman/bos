@@ -2,32 +2,9 @@ repo_image_name_styled := "bOS"
 repo_image_name := "bos"
 repo_name := "bsherman"
 username := "bsherman"
-images := '(
-    [aurora]="aurora"
-    [aurora-nvidia]="aurora-nvidia"
-    [bazzite]="bazzite"
-    [bazzite-nvidia]="bazzite-nvidia"
-    [bazzite-deck]="bazzite-deck"
-    [bazzite-deck-nvidia]="bazzite-deck-nvidia"
-    [bazzite-gnome]="bazzite-gnome"
-    [bazzite-gnome-nvidia]="bazzite-gnome-nvidia"
-    [bluefin-latest]="bluefin-dx"
-    [bluefin-latest-nvidia]="bluefin-dx-nvidia-open"
-    [bluefin-gdx]="bluefin-gdx"
-    [bluefin-lts]="bluefin-dx"
-    [bluefin]="bluefin-dx"
-    [bluefin-nvidia]="bluefin-dx-nvidia-open"
-    [ucore-minimal]="stable"
-    [ucore-hci]="stable"
-    [ucore-hci-nvidia]="stable-nvidia"
-    [ucore]="stable"
-    [ucore-nvidia]="stable-nvidia"
-    [ucore-minimal-lts]="lts"
-    [ucore-hci-lts]="lts"
-    [ucore-hci-lts-nvidia]="lts-nvidia"
-    [ucore-lts]="lts"
-    [ucore-lts-nvidia]="lts-nvidia"
-)'
+
+# Image definitions now live in images.yaml (single source of truth).
+# See `just list-images` and `just generate-ci-matrix`.
 export SUDO_DISPLAY := if `if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then echo true; fi` == "true" { "true" } else { "false" }
 export SUDOIF := if `id -u` == "0" { "" } else if SUDO_DISPLAY == "true" { "sudo --askpass" } else { "sudo" }
 export SET_X := if `id -u` == "0" { "1" } else { env('SET_X', '') }
@@ -35,9 +12,55 @@ export PODMAN := if path_exists("/usr/bin/podman") == "true" { env("PODMAN", "/u
 export PULL_POLICY := if PODMAN =~ "docker" { "missing" } else { "newer" }
 chunkah_image := env("CHUNKAH_IMAGE", "quay.io/coreos/chunkah:v0.5.0")
 
+# Use the spec-compliant merge anchor behavior to avoid warnings when using
+# <<: anchors in images.yaml. This will become the default in late 2025.
+YQ := "yq --yaml-fix-merge-anchor-to-spec"
+
 [private]
 default:
     @just --list
+
+# List defined images (optionally filtered by flavor, e.g. `just list-images Server`)
+[group('Image')]
+list-images flavor="":
+    #!/usr/bin/env bash
+    if [[ -n "{{ flavor }}" ]]; then
+        {{ YQ }} -r '.flavors["{{ flavor }}"][] | .tag' images.yaml
+    else
+        {{ YQ }} -r '.flavors[][] | .tag' images.yaml
+    fi
+
+# Generate the matrix JSON expected by GitHub Actions for a given flavor.
+# Example: just generate-ci-matrix Server
+[group('CI')]
+generate-ci-matrix flavor:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    entries=$({{ YQ }} -r '
+        .flavors["{{ flavor }}"][] 
+        | select((.ci_enabled // false) == true) 
+        | .tag + " " + ((.multi_arch // false) | tostring)
+    ' images.yaml)
+
+    result="[]"
+    while read -r tag multi; do
+        [[ -z "$tag" ]] && continue
+        if [[ "$multi" == "true" ]]; then
+            result=$(echo "$result" | jq -c \
+                --arg img "$tag" \
+                '. + [
+                    {image: $img, arch: "x86_64", runner: "ubuntu-24.04"},
+                    {image: $img, arch: "aarch64", runner: "ubuntu-24.04-arm"}
+                ]')
+        else
+            result=$(echo "$result" | jq -c \
+                --arg img "$tag" \
+                '. + [{image: $img, arch: "x86_64", runner: "ubuntu-24.04"}]')
+        fi
+    done <<< "$entries"
+
+    echo "$result"
 
 # Check Just Syntax
 [group('Just')]
@@ -78,63 +101,39 @@ build image="bluefin":
     #!/usr/bin/env bash
     echo "::group:: Container Build Prep"
     set ${SET_X:+-x} -eou pipefail
-    declare -A images={{ images }}
-    check=${images[{{ image }}]-}
-    if [[ -z "$check" ]]; then
+
+    if ! {{ YQ }} -e '.flavors[][] | select(.tag == "{{ image }}")' images.yaml >/dev/null 2>&1; then
+        echo "Error: Unknown image '{{ image }}'. Run 'just list-images' to see options."
         exit 1
     fi
+
+    BASE_IMAGE=$({{ YQ }} -r '.flavors[][] | select(.tag == "{{ image }}") | .base_image' images.yaml)
+
+    # Read build metadata from images.yaml (single source of truth)
+    BASE_TAG=$({{ YQ }} -r '.flavors[][] | select(.tag == "{{ image }}") | .base_tag // "stable"' images.yaml)
+    DIST_ABRV=$({{ YQ }} -r '.flavors[][] | select(.tag == "{{ image }}") | .dist_abrv // "fc"' images.yaml)
+    DNF=$({{ YQ }} -r '.flavors[][] | select(.tag == "{{ image }}") | .dnf // "dnf5"' images.yaml)
+
+    # Note: For the ucore family, base_image and base_tag are read directly from images.yaml.
+    # No extra swapping is needed after the rename.
+
     BUILD_ARGS=()
     TMPFILES=()
     cleanup_tmpfiles() {
         rm -f "${TMPFILES[@]}"
     }
     trap cleanup_tmpfiles EXIT
-    DIST_ABRV=fc
-    DNF=dnf5
-
-    case "{{ image }}" in
-    "bluefin-gdx"*|"bluefin-lts"*)
-        BASE_IMAGE="${check}"
-        TAG_VERSION=lts
-        DIST_ABRV=el
-        DNF=dnf
-        ;;
-    "aurora-latest"*|"bluefin-latest"*)
-        BASE_IMAGE="${check}"
-        TAG_VERSION=latest
-        ;;
-    "aurora"*|"bluefin"*)
-        BASE_IMAGE="${check}"
-        TAG_VERSION=stable-daily
-        ;;
-    "bazzite"*)
-        BASE_IMAGE="${check}"
-        TAG_VERSION=stable
-        ;;
-    "ucore-minimal"*)
-        BASE_IMAGE=ucore-minimal
-        TAG_VERSION="${check}"
-        ;;
-    "ucore-hci"*)
-        BASE_IMAGE=ucore-hci
-        TAG_VERSION="${check}"
-        ;;
-    "ucore"*)
-        BASE_IMAGE=ucore
-        TAG_VERSION="${check}"
-        ;;
-    esac
 
     case "{{ image }}" in
     "ucore"*)
-        just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
-        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" | jq -r '.Labels["org.opencontainers.image.version"]' | grep -oP '^\K[0-9]+')"
+        just verify-container "${BASE_IMAGE}":"${BASE_TAG}"
+        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}" | jq -r '.Labels["org.opencontainers.image.version"]' | grep -oP '^\K[0-9]+')"
         ;;
     *)
-        just verify-container "${BASE_IMAGE}":"${TAG_VERSION}"
+        just verify-container "${BASE_IMAGE}":"${BASE_TAG}"
         inspect_json="$(mktemp -t inspect-{{ image }}.XXXXXXXXXX.json)"
         TMPFILES+=("${inspect_json}")
-        skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}" > "${inspect_json}"
+        skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}" > "${inspect_json}"
         fedora_version="$(jq -r '.Labels["org.opencontainers.image.version"]' < "${inspect_json}" | grep -oP '^\K[0-9]+')"
         ;;
     esac
@@ -159,7 +158,7 @@ build image="bluefin":
     BUILD_ARGS+=("--label" "org.opencontainers.image.description={{ repo_image_name }} is my OCI image built from ublue projects. It mainly extends them for my uses.")
     BUILD_ARGS+=("--build-arg" "IMAGE={{ image }}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE=$BASE_IMAGE")
-    BUILD_ARGS+=("--build-arg" "TAG_VERSION=$TAG_VERSION")
+    BUILD_ARGS+=("--build-arg" "BASE_TAG=$BASE_TAG")
     BUILD_ARGS+=("--build-arg" "SET_X=${SET_X:-}")
     BUILD_ARGS+=("--build-arg" "VERSION=$VERSION")
     BUILD_ARGS+=("--build-arg" "DNF=$DNF")
@@ -186,7 +185,7 @@ build image="bluefin":
     {{ PODMAN }} images
     echo "::endgroup::"
 
-    {{ PODMAN }} rmi ghcr.io/ublue-os/"${BASE_IMAGE}":"${TAG_VERSION}"
+    {{ PODMAN }} rmi ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}"
 
 # Chunk Image
 [group('Image')]
@@ -266,9 +265,8 @@ build-iso image="bluefin" ghcr="0" clean="0":
     #!/usr/bin/env bash
     set ${SET_X:+-x} -eou pipefail
     # Validate
-    declare -A images={{ images }}
-    check=${images[{{ image }}]-}
-    if [[ -z "$check" ]]; then
+    if ! {{ YQ }} -e '.flavors[][] | select(.tag == "{{ image }}")' images.yaml >/dev/null 2>&1; then
+        echo "Error: Unknown image '{{ image }}'. Run 'just list-images' to see options."
         exit 1
     fi
 
@@ -319,9 +317,6 @@ build-iso image="bluefin" ghcr="0" clean="0":
     FLATPAK_REFS_DIR_ABS="$(realpath ${FLATPAK_REFS_DIR})"
     mkdir -p "${FLATPAK_REFS_DIR_ABS}"
     case "{{ image }}" in
-    *"aurora"*)
-        FLATPAK_LIST_URL="https://raw.githubusercontent.com/ublue-os/aurora/refs/heads/main/aurora_flatpaks/flatpaks"
-    ;;
     *"bazzite-gnome"*)
         FLATPAK_LIST_URL="https://raw.githubusercontent.com/ublue-os/bazzite/refs/heads/main/installer/gnome_flatpaks/flatpaks"
     ;;
@@ -342,7 +337,7 @@ build-iso image="bluefin" ghcr="0" clean="0":
     )
     if [[ "{{ image }}" =~ bazzite-gnome ]]; then
         ADDITIONAL_FLATPAKS+=(app/org.gnome.World.PikaBackup/x86_64/stable)
-    elif [[ "{{ image }}" =~ aurora|bluefin ]]; then
+    elif [[ "{{ image }}" =~ bluefin ]]; then
         ADDITIONAL_FLATPAKS+=(app/it.mijorus.gearlever/x86_64/stable)
     fi
     FLATPAK_REFS=()

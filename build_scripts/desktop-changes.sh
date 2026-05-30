@@ -20,8 +20,7 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     # remove solaar and input leap, if installed
     $DNF -y remove input-leap solaar virt-manager virt-viewer virt-v2v
 
-    # ensure no moby-engine packages, we can use sysext if needed
-    $DNF remove -y containerd docker-buildx docker-cli docker-compose moby-engine runc
+    /ctx/build_scripts/common-hygiene.sh
 fi
 
 if [[ ${IMAGE} =~ bluefin|bazzite-gnome ]]; then

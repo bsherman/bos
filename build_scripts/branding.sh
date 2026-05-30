@@ -20,9 +20,6 @@ case "${IMAGE}" in
 "bazzite"* | "bluefin"*)
     base_image="silverblue"
     ;;
-"aurora"*)
-    base_image="kinoite"
-    ;;
 "ucore"*)
     # shellcheck disable=SC2153
     base_image="${BASE_IMAGE}"

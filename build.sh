@@ -9,7 +9,7 @@ echo "::endgroup::"
 
 # Changes
 case "${IMAGE}" in
-"aurora"* | "bluefin"*)
+"bluefin"*)
     echo "::group:: ===Desktop Changes==="
     /ctx/build_scripts/desktop-changes.sh
     echo "::endgroup::"

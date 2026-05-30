@@ -75,5 +75,6 @@ The build system is intentionally straightforward:
 - `build.sh` — Main build entrypoint (executed inside the container during the build)
 - `build_scripts/` — Individual scripts for package installation, configuration changes, signing, cleanup, and helpers
 - `system_files/` — Overlay files and configs merged into the image (shared + desktop/server specific)
-- `Justfile` — Local development commands (`just build`, `just lint`, `just format`, etc.)
+- `Justfile` — Local development commands (`just build`, `just lint`, `just format`, etc.).
+  Image variants and build metadata are defined in `images.yaml`.
 - `Containerfile` — Minimal definition that copies everything and invokes `build.sh`

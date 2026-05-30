@@ -1,0 +1,135 @@
+# images.yaml
+# Single source of truth for bOS image variants.
+#
+# Use YAML anchors for common defaults ("fedora-desktop" and "ucore").
+#
+# Defaults:
+#   - ci_enabled: true   (fedora-desktop + ucore bases)
+#   - multi_arch: true   (ucore base only)
+#
+# Booleans default as above. Only override when you want different behavior
+# (e.g. Bluefin sets ci_enabled: false; single-arch ucore variants set multi_arch: false).
+#
+# Field Key:
+#   tag          : Name used with `just build <tag>` and for the final published image tags.
+#   base_image   : Upstream image name under ghcr.io/ublue-os/ (the part before the colon in FROM/inspect).
+#   base_tag     : Tag to use on the upstream base image.
+#   multi_arch   : Build this variant for both x86_64 and aarch64? Defaults to false.
+#   ci_enabled   : Include this variant in GitHub Actions CI builds? Defaults to false.
+#   dist_abrv    : Distribution abbreviation used in the build ("fc" for Fedora, "el" for Enterprise Linux).
+#   dnf          : Package manager to use during the build ("dnf5" or "dnf").
+
+templates:
+  fedora-desktop: &fedora-desktop
+    dist_abrv: fc
+    dnf: dnf5
+    ci_enabled: true
+
+  ucore: &ucore
+    dist_abrv: fc
+    dnf: dnf5
+    ci_enabled: true
+    multi_arch: true
+
+flavors:
+  Bazzite:
+    - <<: *fedora-desktop
+      tag: bazzite
+      base_image: bazzite
+
+    - <<: *fedora-desktop
+      tag: bazzite-nvidia
+      base_image: bazzite-nvidia
+
+    - <<: *fedora-desktop
+      tag: bazzite-gnome
+      base_image: bazzite-gnome
+
+    - <<: *fedora-desktop
+      tag: bazzite-gnome-nvidia
+      base_image: bazzite-gnome-nvidia
+
+    # Currently disabled in CI
+    - <<: *fedora-desktop
+      tag: bazzite-deck
+      base_image: bazzite-deck
+      ci_enabled: false
+
+    - <<: *fedora-desktop
+      tag: bazzite-deck-nvidia
+      base_image: bazzite-deck-nvidia
+      ci_enabled: false
+
+  Bluefin:
+    # Currently disabled in CI.
+    # These can still be built locally with `just build bluefin`
+    - <<: *fedora-desktop
+      tag: bluefin
+      base_image: bluefin-dx
+      base_tag: stable-daily
+      ci_enabled: false
+
+    - <<: *fedora-desktop
+      tag: bluefin-nvidia
+      base_image: bluefin-dx-nvidia-open
+      base_tag: stable-daily
+      ci_enabled: false
+
+  Server:
+    # uCore naming: base repos are only "ucore", "ucore-minimal", "ucore-hci".
+    # The "base_tag" combines a stream (stable/lts) + optional nvidia suffix.
+    # Example: ucore-nvidia uses base_image=ucore + base_tag=stable-nvidia.
+    - <<: *ucore
+      tag: ucore
+      base_image: ucore
+      base_tag: stable
+
+    - <<: *ucore
+      tag: ucore-minimal
+      base_image: ucore-minimal
+      base_tag: stable
+
+    - <<: *ucore
+      tag: ucore-nvidia
+      base_image: ucore
+      base_tag: stable-nvidia
+      multi_arch: false
+
+    - <<: *ucore
+      tag: ucore-hci
+      base_image: ucore-hci
+      base_tag: stable
+      multi_arch: false
+
+    - <<: *ucore
+      tag: ucore-hci-nvidia
+      base_image: ucore-hci
+      base_tag: stable-nvidia
+      multi_arch: false
+
+    - <<: *ucore
+      tag: ucore-lts
+      base_image: ucore
+      base_tag: lts
+
+    - <<: *ucore
+      tag: ucore-minimal-lts
+      base_image: ucore-minimal
+      base_tag: lts
+
+    - <<: *ucore
+      tag: ucore-hci-lts
+      base_image: ucore-hci
+      base_tag: lts
+
+    - <<: *ucore
+      tag: ucore-hci-lts-nvidia
+      base_image: ucore-hci
+      base_tag: lts-nvidia
+      multi_arch: false
+
+    - <<: *ucore
+      tag: ucore-lts-nvidia
+      base_image: ucore
+      base_tag: lts-nvidia
+      multi_arch: false

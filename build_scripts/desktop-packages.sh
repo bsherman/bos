@@ -36,7 +36,7 @@ if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
         gnome-shell-extension-no-overview \
         libgda \
         libgda-sqlite
-elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
+elif [[ ${IMAGE} =~ bazzite ]]; then
     $DNF install -y \
         plasma-discover \
         plasma-discover-kns
@@ -60,6 +60,6 @@ if [ -f /etc/yum.repos.d/terra.repo ]; then
     if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then
         $DNF install --from-repo=terra --setopt=install_weak_deps=False -y \
             ghostty-nautilus
-    #elif [[ ${IMAGE} =~ bazzite|aurora ]]; then
+    #elif [[ ${IMAGE} =~ bazzite ]]; then
     fi
 fi

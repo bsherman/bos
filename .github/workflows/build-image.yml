@@ -51,10 +51,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v4
 
-      - name: Install Just
-        uses: >-
-          extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
-
       - name: Show disk space (before cleanup)
         run: sudo df -h
 
@@ -99,6 +95,10 @@ jobs:
         uses: sigstore/cosign-installer@v4.1.1
         with:
           cosign-release: 'v2.6.1'
+
+      - name: Install Just
+        uses: >-
+          extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
 
       - name: Build Image
         shell: bash

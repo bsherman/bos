@@ -70,12 +70,26 @@ jobs:
         if: ${{ steps.check_mnt.outputs.mnt_is_there == '1' }}
         # v1.3.1
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        with:
+          # These image builds do not use the runner's preinstalled language
+          # toolchains, and the tool cache is one of the largest directories on
+          # the root filesystem.
+          tool-cache: true
 
       - name: Mount BTRFS for podman storage
         uses: ublue-os/container-storage-action@main
         if: ${{ steps.check_mnt.outputs.mnt_is_there == '1' }}
         with:
           target-dir: /var/lib/containers
+
+      - name: Redirect temp files to /mnt
+        if: ${{ steps.check_mnt.outputs.mnt_is_there == '1' }}
+        shell: bash
+        run: |
+          sudo mkdir -p /mnt/tmp
+          sudo chmod 1777 /mnt/tmp
+          echo "TMPDIR=/mnt/tmp" >> "${GITHUB_ENV}"
+          echo "CHUNK_OUTPUT_DIR=/mnt/tmp" >> "${GITHUB_ENV}"
 
       - name: Show disk space (after cleanup)
         run: sudo df -h
@@ -93,6 +107,7 @@ jobs:
           # just build ${{ matrix.combo.image }}
           sudo env \
             XDG_RUNTIME_DIR=/tmp \
+            TMPDIR="${TMPDIR:-/tmp}" \
             PATH="$PATH" \
             GITHUB_TOKEN="$GITHUB_TOKEN" \
             just build ${{ matrix.combo.image }}
@@ -102,6 +117,8 @@ jobs:
         run: |
           sudo env \
             XDG_RUNTIME_DIR=/tmp \
+            TMPDIR="${TMPDIR:-/tmp}" \
+            CHUNK_OUTPUT_DIR="${CHUNK_OUTPUT_DIR:-}" \
             PATH="$PATH" \
             just chunk ${{ matrix.combo.image }}
 

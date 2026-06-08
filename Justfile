@@ -206,9 +206,11 @@ chunk image="bluefin":
     fi
 
     OUT_NAME="{{ repo_image_name }}_{{ image }}"
+    OUT_DIR="${CHUNK_OUTPUT_DIR:-$PWD}"
+    mkdir -p "${OUT_DIR}"
     VERSION="$({{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')"
-    CONFIG_JSON="${OUT_NAME}.config.json"
-    OCI_ARCHIVE="${OUT_NAME}.oci"
+    CONFIG_JSON="${OUT_DIR}/${OUT_NAME}.config.json"
+    OCI_ARCHIVE="${OUT_DIR}/${OUT_NAME}.oci"
     rm -f "${CONFIG_JSON}" "${OCI_ARCHIVE}"
     {{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | tee "${CONFIG_JSON}" >/dev/null
     echo "::endgroup::"
@@ -218,8 +220,8 @@ chunk image="bluefin":
         --pull={{ PULL_POLICY }} \
         --security-opt label=disable \
         --mount type=image,src=localhost/{{ repo_image_name }}:{{ image }},destination=/chunkah \
-        --volume "$PWD:/workspace" \
-        --volume "$PWD/${CONFIG_JSON}:/config.json:ro" \
+        --volume "${OUT_DIR}:/chunk-output" \
+        --volume "${CONFIG_JSON}:/config.json:ro" \
         {{ chunkah_image }} \
         build \
         --config /config.json \
@@ -228,7 +230,7 @@ chunk image="bluefin":
         --label ostree.commit- \
         --label ostree.final-diffid- \
         --tag localhost/{{ repo_image_name }}:{{ image }} \
-        --output "/workspace/${OCI_ARCHIVE}"
+        --output "/chunk-output/${OUT_NAME}.oci"
     echo "::endgroup::"
 
     echo "::group:: Cleanup"
@@ -244,12 +246,14 @@ load-chunked-oci image="bluefin":
     #!/usr/bin/env bash
     echo "::group:: Load Chunked OCI"
     set ${SET_X:+-x} -eou pipefail
-    echo "Loading chunked OCI archive {{ repo_image_name }}_{{ image }}.oci into Podman and applying tags"
-    {{ PODMAN }} load --input {{ repo_image_name }}_{{ image }}.oci
+    OUT_DIR="${CHUNK_OUTPUT_DIR:-$PWD}"
+    OCI_ARCHIVE="${OUT_DIR}/{{ repo_image_name }}_{{ image }}.oci"
+    echo "Loading chunked OCI archive ${OCI_ARCHIVE} into Podman and applying tags"
+    {{ PODMAN }} load --input "${OCI_ARCHIVE}"
     VERSION=$({{ PODMAN }} inspect localhost/{{ repo_image_name }}:{{ image }} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]')
     {{ PODMAN }} tag localhost/{{ repo_image_name }}:{{ image }} localhost/{{ repo_image_name }}:"${VERSION}"
     {{ PODMAN }} images
-    rm -f {{ repo_image_name }}_{{ image }}.oci version.txt
+    rm -f "${OCI_ARCHIVE}" version.txt
     echo "::endgroup::"
 
 # Get Tags

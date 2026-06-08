@@ -9,9 +9,9 @@ outputs:
   images:
     description: "List of image/arch/runner combos to build"
     value: ${{ steps.images.outputs.images }}
-  multi_arch_images:
-    description: "List of image names that need manifest creation"
-    value: ${{ steps.images.outputs.multi_arch_images }}
+  manifest_images:
+    description: "List of images and arches for manifest creation"
+    value: ${{ steps.images.outputs.manifest_images }}
 runs:
   using: "composite"
   steps:
@@ -44,6 +44,7 @@ runs:
 
         # Build structured JSON array
         combos="[]"
+        manifest_images="[]"
         for img in "${single_arch[@]}"; do
           combos=$(echo "$combos" | jq -c \
             --arg image "$img" \
@@ -51,6 +52,12 @@ runs:
               "image": $image,
               "arch": "x86_64",
               "runner": "ubuntu-24.04"
+            }]')
+          manifest_images=$(echo "$manifest_images" | jq -c \
+            --arg image "$img" \
+            '. + [{
+              "image": $image,
+              "arches": ["x86_64"]
             }]')
         done
         for img in "${multi_arch[@]}"; do
@@ -60,12 +67,14 @@ runs:
               {"image": $image, "arch": "x86_64", "runner": "ubuntu-24.04"},
               {"image": $image, "arch": "aarch64", "runner": "ubuntu-24.04-arm"}
             ]')
+          manifest_images=$(echo "$manifest_images" | jq -c \
+            --arg image "$img" \
+            '. + [{
+              "image": $image,
+              "arches": ["x86_64", "aarch64"]
+            }]')
         done
-
-        # Multi-arch image names list
-        multi_arch_json="$(jq --null-input --compact-output \
-          '$ARGS.positional' --args "${multi_arch[@]}")"
 
         # Output
         echo "images=$combos" >> "$GITHUB_OUTPUT"
-        echo "multi_arch_images=$multi_arch_json" >> "$GITHUB_OUTPUT"
+        echo "manifest_images=$manifest_images" >> "$GITHUB_OUTPUT"

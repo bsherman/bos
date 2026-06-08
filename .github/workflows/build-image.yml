@@ -22,7 +22,7 @@ jobs:
     name: Get ${{ inputs.image_flavor }} Images for Build
     outputs:
       images: ${{ steps.images.outputs.images }}
-      multi_arch_images: ${{ steps.images.outputs.multi_arch_images }}
+      manifest_images: ${{ steps.images.outputs.manifest_images }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -52,7 +52,8 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v4
 
       - name: Install Just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3  # v4.0.0
+        uses: >-
+          extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
 
       - name: Show disk space (before cleanup)
         run: sudo df -h
@@ -140,21 +141,13 @@ jobs:
         shell: bash
         run: |
           TAGS="${{ steps.get_tags.outputs.tags }}"
-          MULTI_ARCH='${{ needs.get-images.outputs.multi_arch_images }}'
-          IMAGE="${{ matrix.combo.image }}"
           ARCH="${{ matrix.combo.arch }}"
-          IS_MULTI=$(echo "$MULTI_ARCH" | \
-            jq -r --arg img "$IMAGE" 'any(.[]; . == $img)')
-          if [[ "$IS_MULTI" == "true" ]]; then
-            # Append -<arch> to each tag
-            SUFFIXED=""
-            for tag in $TAGS; do
-              SUFFIXED+="${tag}-${ARCH} "
-            done
-            TAGS="${SUFFIXED% }"
-          fi
+          SUFFIXED=""
+          for tag in $TAGS; do
+            SUFFIXED+="${tag}-${ARCH} "
+          done
+          TAGS="${SUFFIXED% }"
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
-          echo "is_multi_arch=$IS_MULTI" >> $GITHUB_OUTPUT
 
       - name: Report Publish Mode
         shell: bash
@@ -162,27 +155,8 @@ jobs:
           echo "Image: ${{ matrix.combo.image }}"
           echo "Arch: ${{ matrix.combo.arch }}"
           echo "Tags: ${{ steps.push_tags.outputs.tags }}"
-          echo "Multi-arch: ${{ steps.push_tags.outputs.is_multi_arch }}"
-          if [[ \
-            "${{ steps.push_tags.outputs.is_multi_arch }}" == "true" \
-          ]]; then
-            echo "Per-arch image will be pushed in this job."
-            echo "Manifest assembly and signing happen in create-manifest."
-          else
-            echo "Single-arch image will be pushed and signed in this job."
-          fi
-
-      - name: Tag Images for Multi-Arch Push
-        if: steps.push_tags.outputs.is_multi_arch == 'true'
-        shell: bash
-        run: |
-          ORIG_TAGS="${{ steps.get_tags.outputs.tags }}"
-          ARCH="${{ matrix.combo.arch }}"
-          for tag in $ORIG_TAGS; do
-            podman tag \
-              ${{ env.IMAGE_NAME }}:${tag} \
-              ${{ env.IMAGE_NAME }}:${tag}-${ARCH}
-          done
+          echo "Arch-specific image will be pushed on publishing runs."
+          echo "Manifest assembly and signing happen in create-manifest."
 
       # NOTE: disabled secureboot check since bluefin LTS will never pass
       # - name: Check Secureboot
@@ -221,35 +195,13 @@ jobs:
           image-tags: ${{ steps.push_tags.outputs.tags }}
           image-registry: ${{ steps.registry_case.outputs.lowercase }}
           compression-format: zstd:chunked
-      - name: Login to GHCR for Single-Arch Signing
-        uses: docker/login-action@v4
-        if: >-
-          (contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == inputs.publish_schedule)
-          && steps.push_tags.outputs.is_multi_arch != 'true'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Sign Single-Arch Image
-        if: >-
-          (contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == inputs.publish_schedule)
-          && steps.push_tags.outputs.is_multi_arch != 'true'
-        run: |
-          REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY \
-              "${REGISTRY}/${{ env.IMAGE_NAME }}@${TAGS}"
-        env:
-          TAGS: ${{ steps.push_chunked.outputs.digest }}
-          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
   create-manifest:
-    name: Create Manifest (${{ matrix.image }})
+    name: Create Manifest (${{ matrix.entry.image }})
     needs: [get-images, build-image]
     if: >-
       (contains(fromJson('["workflow_dispatch", "merge_group"]'),
       github.event_name) || github.event.schedule == inputs.publish_schedule)
-      && needs.get-images.outputs.multi_arch_images != '[]'
+      && needs.get-images.outputs.manifest_images != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -258,7 +210,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ${{ fromJson(needs.get-images.outputs.multi_arch_images) }}
+        entry: ${{ fromJson(needs.get-images.outputs.manifest_images) }}
     steps:
       - name: Lowercase Registry
         id: registry_case
@@ -276,12 +228,14 @@ jobs:
         id: version
         run: |
           REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
-          # Inspect x86_64 image to get the version tag
           IMG="${REGISTRY}/${{ env.IMAGE_NAME }}"
+          IMAGE="${{ matrix.entry.image }}"
+          ARCHES='${{ toJson(matrix.entry.arches) }}'
+          FIRST_ARCH="$(jq -r '.[0]' <<< "${ARCHES}")"
           VERSION=$(skopeo inspect \
             --creds \
             "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" \
-            "docker://${IMG}:${{ matrix.image }}-x86_64" \
+            "docker://${IMG}:${IMAGE}-${FIRST_ARCH}" \
             | jq -r \
             '.Labels["org.opencontainers.image.version"]')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -290,6 +244,8 @@ jobs:
         run: |
           REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
           IMAGE="${REGISTRY}/${{ env.IMAGE_NAME }}"
+          IMAGE_TAG="${{ matrix.entry.image }}"
+          ARCHES='${{ toJson(matrix.entry.arches) }}'
           VERSION="${{ steps.version.outputs.version }}"
           ANNOTATION_ARGS=(
             --annotation
@@ -297,34 +253,42 @@ jobs:
           )
           DIGESTFILE="$(mktemp -t manifest-digest.XXXXXXXXXX)"
 
-          podman manifest create "${IMAGE}:${{ matrix.image }}"
-          podman manifest add \
-            "${IMAGE}:${{ matrix.image }}" \
-            "docker://${IMAGE}:${{ matrix.image }}-x86_64" \
-            --arch amd64 \
-            "${ANNOTATION_ARGS[@]}"
-          podman manifest add \
-            "${IMAGE}:${{ matrix.image }}" \
-            "docker://${IMAGE}:${{ matrix.image }}-aarch64" \
-            --arch arm64 \
-            "${ANNOTATION_ARGS[@]}"
+          add_arches() {
+            local manifest_ref="$1"
+            local source_tag="$2"
+
+            while read -r arch; do
+              case "${arch}" in
+                x86_64)
+                  oci_arch="amd64"
+                  ;;
+                aarch64)
+                  oci_arch="arm64"
+                  ;;
+                *)
+                  echo "Unsupported architecture: ${arch}" >&2
+                  exit 1
+                  ;;
+              esac
+
+              podman manifest add \
+                "${manifest_ref}" \
+                "docker://${IMAGE}:${source_tag}-${arch}" \
+                --arch "${oci_arch}" \
+                "${ANNOTATION_ARGS[@]}"
+            done < <(jq -r '.[]' <<< "${ARCHES}")
+          }
+
+          podman manifest create "${IMAGE}:${IMAGE_TAG}"
+          add_arches "${IMAGE}:${IMAGE_TAG}" "${IMAGE_TAG}"
           podman manifest push \
             --all=false \
             --digestfile "${DIGESTFILE}" \
-            "${IMAGE}:${{ matrix.image }}"
+            "${IMAGE}:${IMAGE_TAG}"
           IMAGE_DIGEST="$(cat "${DIGESTFILE}")"
 
           podman manifest create "${IMAGE}:${VERSION}"
-          podman manifest add \
-            "${IMAGE}:${VERSION}" \
-            "docker://${IMAGE}:${VERSION}-x86_64" \
-            --arch amd64 \
-            "${ANNOTATION_ARGS[@]}"
-          podman manifest add \
-            "${IMAGE}:${VERSION}" \
-            "docker://${IMAGE}:${VERSION}-aarch64" \
-            --arch arm64 \
-            "${ANNOTATION_ARGS[@]}"
+          add_arches "${IMAGE}:${VERSION}" "${VERSION}"
           podman manifest push \
             --all=false \
             --digestfile "${DIGESTFILE}" \
@@ -343,7 +307,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Sign Multi-Arch Manifests
+      - name: Sign Manifests
         run: |
           REGISTRY="${{ steps.registry_case.outputs.lowercase }}"
           IMAGE="${REGISTRY}/${{ env.IMAGE_NAME }}"

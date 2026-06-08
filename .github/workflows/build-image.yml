@@ -83,10 +83,12 @@ jobs:
         if: ${{ steps.check_mnt.outputs.mnt_is_there == '1' }}
         shell: bash
         run: |
-          sudo mkdir -p /mnt/tmp
+          sudo mkdir -p /mnt/tmp /mnt/tmp/bos-chunks
           sudo chmod 1777 /mnt/tmp
+          sudo chown "$(id -u):$(id -g)" /mnt/tmp/bos-chunks
+          chmod 0755 /mnt/tmp/bos-chunks
           echo "TMPDIR=/mnt/tmp" >> "${GITHUB_ENV}"
-          echo "CHUNK_OUTPUT_DIR=/mnt/tmp" >> "${GITHUB_ENV}"
+          echo "CHUNK_OUTPUT_DIR=/mnt/tmp/bos-chunks" >> "${GITHUB_ENV}"
 
       - name: Show disk space (after cleanup)
         run: sudo df -h

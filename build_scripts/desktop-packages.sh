@@ -25,10 +25,11 @@ EOF
 # common packages installed to desktops
 $DNF install --setopt=install_weak_deps=False -y \
     code \
-    source-foundry-hack-fonts \
+    inxi \
     jetbrains-mono-fonts-all \
     powerline-fonts \
     rsms-inter-vf-fonts \
+    source-foundry-hack-fonts \
     sunshine
 
 if [[ ${IMAGE} =~ bazzite-gnome|bluefin ]]; then

@@ -127,14 +127,14 @@ build image="bluefin":
     case "{{ image }}" in
     "ucore"*)
         just verify-container "${BASE_IMAGE}":"${BASE_TAG}"
-        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}" | jq -r '.Labels["org.opencontainers.image.version"]' | grep -oP '^\K[0-9]+')"
+        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}" | jq -r '.Labels["org.opencontainers.image.version"]' | grep -oP '^(?:[[:alpha:]]+-)?\K[0-9]+')"
         ;;
     *)
         just verify-container "${BASE_IMAGE}":"${BASE_TAG}"
         inspect_json="$(mktemp -t inspect-{{ image }}.XXXXXXXXXX.json)"
         TMPFILES+=("${inspect_json}")
         skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}" > "${inspect_json}"
-        fedora_version="$(jq -r '.Labels["org.opencontainers.image.version"]' < "${inspect_json}" | grep -oP '^\K[0-9]+')"
+        fedora_version="$(jq -r '.Labels["org.opencontainers.image.version"]' < "${inspect_json}" | grep -oP '^(?:[[:alpha:]]+-)?\K[0-9]+')"
         ;;
     esac
 

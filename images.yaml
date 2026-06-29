@@ -36,10 +36,12 @@ flavors:
     - <<: *fedora-desktop
       tag: bazzite
       base_image: bazzite
+      base_tag: testing
 
     - <<: *fedora-desktop
       tag: bazzite-nvidia
       base_image: bazzite-nvidia
+      base_tag: testing
 
     - <<: *fedora-desktop
       tag: bazzite-gnome

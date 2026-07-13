@@ -36,20 +36,22 @@ flavors:
     - <<: *fedora-desktop
       tag: bazzite
       base_image: bazzite
-      base_tag: testing
+      base_tag: stable
 
     - <<: *fedora-desktop
       tag: bazzite-nvidia
       base_image: bazzite-nvidia
-      base_tag: testing
+      base_tag: stable
 
     - <<: *fedora-desktop
       tag: bazzite-gnome
       base_image: bazzite-gnome
+      base_tag: stable
 
     - <<: *fedora-desktop
       tag: bazzite-gnome-nvidia
       base_image: bazzite-gnome-nvidia
+      base_tag: stable
 
     # Currently disabled in CI
     - <<: *fedora-desktop

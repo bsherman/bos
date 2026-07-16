@@ -30,6 +30,7 @@ $DNF install -y \
     udica \
     unrar-free \
     unzip \
+    virtiofsd \
     zip
 
 /ctx/build_scripts/github-release-install.sh frostyard/updex "$(uname -m).rpm"

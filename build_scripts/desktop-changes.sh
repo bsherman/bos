@@ -6,9 +6,10 @@ echo "Tweaking existing desktop config..."
 
 if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     # ensure /opt and /usr/local are proper
+    mkdir -p /var/opt /var/usrlocal
+
     if [[ ! -h /opt ]]; then
         rm -fr /opt
-        mkdir -p /var/opt
         ln -s /var/opt /opt
     fi
     if [[ ! -h /usr/local ]]; then

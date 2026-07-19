@@ -64,7 +64,7 @@ jobs:
           fi
 
       - name: Free Disk Space (Ubuntu)
-        if: ${{ steps.check_mnt.outputs.mnt_is_there == '1' }}
+        if: ${{ steps.check_mnt.outputs.mnt_is_there != '1' }}
         # v1.3.1
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
         with:
@@ -74,7 +74,9 @@ jobs:
           tool-cache: true
 
       - name: Mount BTRFS for podman storage
-        uses: ublue-os/container-storage-action@main
+        # main 2026-02-11
+        uses: >-
+          ublue-os/container-storage-action@dc1f4c8f17b672069e921f001132f7cf98a423a6
         if: ${{ steps.check_mnt.outputs.mnt_is_there == '1' }}
         with:
           target-dir: /var/lib/containers
@@ -103,6 +105,7 @@ jobs:
           extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
 
       - name: Build Image
+        id: build
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -115,7 +118,19 @@ jobs:
             GITHUB_TOKEN="$GITHUB_TOKEN" \
             just build ${{ matrix.combo.image }}
 
+      - name: Show disk space (after build)
+        if: ${{ always() && steps.build.conclusion != 'skipped' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          sudo df -h /
+          sudo mountpoint -q /mnt && sudo df -h /mnt || true
+          [[ -e /var/lib/containers ]] \
+            && sudo df -h /var/lib/containers || true
+          sudo podman system df || true
+
       - name: Chunk Image
+        id: chunk
         shell: bash
         run: |
           sudo env \
@@ -125,10 +140,33 @@ jobs:
             PATH="$PATH" \
             just chunk ${{ matrix.combo.image }}
 
+      - name: Show disk space (after chunk)
+        if: ${{ always() && steps.chunk.conclusion != 'skipped' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          sudo df -h /
+          sudo mountpoint -q /mnt && sudo df -h /mnt || true
+          [[ -e /var/lib/containers ]] \
+            && sudo df -h /var/lib/containers || true
+          sudo podman system df || true
+
       - name: Load Chunked OCI
+        id: load
         shell: bash
         run: |
           just load-chunked-oci ${{ matrix.combo.image }}
+
+      - name: Show disk space (after load)
+        if: ${{ always() && steps.load.conclusion != 'skipped' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          sudo df -h /
+          sudo mountpoint -q /mnt && sudo df -h /mnt || true
+          [[ -e /var/lib/containers ]] \
+            && sudo df -h /var/lib/containers || true
+          podman system df || true
 
       - name: Get Tags
         id: get_tags

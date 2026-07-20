@@ -6,19 +6,19 @@
   "packageRules": [
     {
       "description": "Separate akmods updates",
-      "matchPackagePatterns": [
-        "^ghcr.io/ublue-os/akmods"
-      ],
       "groupName": "Universal Blue akmods",
-      "groupSlug": "ublue-akmods"
+      "groupSlug": "ublue-akmods",
+      "matchPackageNames": [
+        "/^ghcr.io/ublue-os/akmods/"
+      ]
     },
     {
       "description": "Group all other Universal Blue base images",
-      "matchPackagePatterns": [
-        "^ghcr.io/ublue-os/"
-      ],
       "groupName": "Universal Blue Base Images",
-      "groupSlug": "ublue-os-base"
+      "groupSlug": "ublue-os-base",
+      "matchPackageNames": [
+        "/^ghcr.io/ublue-os//"
+      ]
     },
     {
       "description": "Group all GitHub Actions",

@@ -1,5 +1,5 @@
 ARG BASE_IMAGE="bluefin"
-ARG BASE_TAG="stable-daily"
+ARG BASE_TAG="stable-daily@sha256:2d7b7ea13d91092f6bdb7b710b2baba649c2c577c668e3df1635ed6e52a18a03"
 ARG IMAGE="bluefin"
 
 FROM scratch AS ctx

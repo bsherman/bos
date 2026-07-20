@@ -49,7 +49,7 @@ jobs:
         combo: ${{ fromJson(needs.get-images.outputs.images) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Show disk space (before cleanup)
         run: sudo df -h
@@ -96,7 +96,7 @@ jobs:
         run: sudo df -h
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.1.1
+        uses: sigstore/cosign-installer@v4.1.2
         with:
           cosign-release: 'v2.6.1'
 
@@ -338,7 +338,7 @@ jobs:
           echo "image_digest=${IMAGE_DIGEST}" >> "${GITHUB_OUTPUT}"
           echo "version_digest=${VERSION_DIGEST}" >> "${GITHUB_OUTPUT}"
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.1.1
+        uses: sigstore/cosign-installer@v4.1.2
         with:
           cosign-release: 'v2.6.1'
       - name: Login to GHCR for Manifest Signing

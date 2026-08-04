@@ -13,6 +13,8 @@ packages=(
     7zip
     age
     bc
+    binutils
+    cpp
     git-lfs
     ipcalc
     iperf3

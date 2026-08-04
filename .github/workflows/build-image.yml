@@ -27,11 +27,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Install Just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
       - name: Get Images for Build
         id: images
-        uses: ./.github/actions/get-images
-        with:
-          image_flavor: ${{ inputs.image_flavor }}
+        shell: bash
+        run: |
+          images=$(just generate-ci-matrix "${{ inputs.image_flavor }}")
+          manifest_images=$(jq -c '
+            reduce .[] as $e ({}; .[$e.image] = (.[$e.image] // []) + [$e.arch])
+            | to_entries
+            | map({image: .key, arches: .value})
+          ' <<<"$images")
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+          echo "manifest_images=$manifest_images" >> "$GITHUB_OUTPUT"
   build-image:
     name: >-
       Build ${{ inputs.image_flavor }} Images

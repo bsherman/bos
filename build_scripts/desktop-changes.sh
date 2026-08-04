@@ -19,6 +19,7 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     fi
 
     # remove solaar and input leap, if installed
+    # NOTE: these no longer seem to be installed on bazzite
     $DNF -y remove input-leap solaar virt-manager virt-viewer virt-v2v
 
     /ctx/build_scripts/common-hygiene.sh

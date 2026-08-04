@@ -13,10 +13,7 @@ packages=(
     7zip
     age
     bc
-    binutils
-    cpp
     git-lfs
-    hdparm
     ipcalc
     iperf3
     libsodium

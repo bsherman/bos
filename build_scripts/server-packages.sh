@@ -11,7 +11,6 @@ fi
 # common packages installed to desktops and servers
 packages=(
     7zip
-    age
     bc
     binutils
     cpp

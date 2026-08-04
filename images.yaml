@@ -51,6 +51,11 @@ flavors:
       base_tag: stable
 
     - <<: *fedora-desktop
+      tag: bazzite-gnome-testing
+      base_image: bazzite-gnome
+      base_tag: testing
+
+    - <<: *fedora-desktop
       tag: bazzite-gnome-nvidia
       base_image: bazzite-gnome-nvidia
       base_tag: stable

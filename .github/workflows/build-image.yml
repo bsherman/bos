@@ -353,11 +353,16 @@ jobs:
           IMAGE="${REGISTRY}/${{ env.IMAGE_NAME }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          cosign sign -y --recursive --new-bundle-format=false \
+          # Legacy simple-signing format is required for containers/image,
+          # bootc, and rpm-ostree signature verification.
+          # containers/container-libs#388, coreos/rpm-ostree#5509
+          cosign sign -y --recursive \
+            --new-bundle-format=false --use-signing-config=false \
             --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE}@${IMAGE_DIGEST}"
 
-          cosign sign -y --recursive --new-bundle-format=false \
+          cosign sign -y --recursive \
+            --new-bundle-format=false --use-signing-config=false \
             --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE}@${VERSION_DIGEST}"
         env:

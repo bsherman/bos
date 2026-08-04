@@ -461,8 +461,10 @@ verify-container container="" registry="ghcr.io/ublue-os" key="":
         key="https://raw.githubusercontent.com/ublue-os/main/main/cosign.pub"
     fi
 
-    # Verify Container using cosign public key
-    if ! cosign verify --key "${key}" "{{ registry }}"/"{{ container }}" >/dev/null; then
+    # Verify Container using cosign public key. --new-bundle-format=false is
+    # required with cosign v3+ since containers/image, bootc, and rpm-ostree
+    # do not yet support the new Sigstore bundle format.
+    if ! cosign verify --new-bundle-format=false --key "${key}" "{{ registry }}"/"{{ container }}" >/dev/null; then
         echo "NOTICE: Verification failed. Please ensure your public key is correct."
         exit 1
     fi

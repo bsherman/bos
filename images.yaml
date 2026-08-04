@@ -37,11 +37,13 @@ flavors:
       tag: bazzite
       base_image: bazzite
       base_tag: stable
+      ci_enabled: false
 
     - <<: *fedora-desktop
       tag: bazzite-nvidia
       base_image: bazzite-nvidia
       base_tag: stable
+      ci_enabled: false
 
     - <<: *fedora-desktop
       tag: bazzite-gnome

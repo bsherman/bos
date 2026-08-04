@@ -136,11 +136,11 @@ flavors:
     - <<: *ucore
       tag: ucore-hci-lts-nvidia
       base_image: ucore-hci
-      base_tag: lts-nvidia
+      base_tag: lts-nvidia-lts
       multi_arch: false
 
     - <<: *ucore
       tag: ucore-lts-nvidia
       base_image: ucore
-      base_tag: lts-nvidia
+      base_tag: lts-nvidia-lts
       multi_arch: false

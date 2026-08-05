@@ -51,7 +51,6 @@ if [[ ! ${IMAGE} =~ ucore-minimal ]]; then
         diffstat \
         expect \
         git-lfs \
-        llvm \
         ninja-build \
         patch \
         patchutils

@@ -63,6 +63,9 @@ upstream image changed are rebuilt and published. Pull requests always build
 enabled variants for validation but do not publish; merges to `main` publish
 all enabled variants.
 
+Workflows run daily. The first scheduled run after adding digest metadata
+rebuilds every enabled variant because existing published images lack it.
+
 ## DIY
 
 This repo was built on the [Universal Blue Image Template](https://github.com/ublue-os/image-template) though it's been added to significantly.

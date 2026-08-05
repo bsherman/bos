@@ -21,6 +21,14 @@
       ]
     },
     {
+      "description": "Keep the Containerfile fallback base tag unpinned",
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["Containerfile"],
+      "matchPackageNames": ["ghcr.io/ublue-os/ucore-minimal"],
+      "matchUpdateTypes": ["pinDigest"],
+      "enabled": false
+    },
+    {
       "description": "Group all GitHub Actions",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions"

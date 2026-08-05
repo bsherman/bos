@@ -31,32 +31,190 @@ list-images flavor="":
     fi
 
 # Generate the matrix JSON expected by GitHub Actions for a given flavor.
-# Example: just generate-ci-matrix Server
+# With changed_only=true, include only variants whose signed published image
+# does not record the current upstream manifest digest.
+# Example: just generate-ci-matrix Server true
 [group('CI')]
-generate-ci-matrix flavor:
+generate-ci-matrix flavor changed_only="false":
     #!/usr/bin/env bash
-    set -euo pipefail
+    set ${SET_X:+-x} -eou pipefail
+
+    if [[ "{{ changed_only }}" != "true" && "{{ changed_only }}" != "false" ]]; then
+        echo "changed_only must be true or false" >&2
+        exit 1
+    fi
+
+    upstream_registry="${UPSTREAM_REGISTRY:-ghcr.io/ublue-os}"
+    image_registry="${IMAGE_REGISTRY:-ghcr.io/bsherman}"
+    image_name="${IMAGE_NAME:-bos}"
+    cosign_key="${COSIGN_PUBLIC_KEY:-cosign.pub}"
+    tmpdir="$(mktemp -d -t bos-ci-matrix.XXXXXXXXXX)"
+    trap 'rm -rf "${tmpdir}"' EXIT
+
+    declare -A upstream_digests=()
+    resolved_digest=""
+
+    retry() {
+        local attempt
+        for attempt in 1 2 3; do
+            if "$@"; then
+                return 0
+            fi
+            if [[ "${attempt}" == "3" ]]; then
+                return 1
+            fi
+            sleep "$((5 * attempt))"
+        done
+    }
+
+    upstream_digest() {
+        local base_image="$1"
+        local base_tag="$2"
+        local key="${base_image}:${base_tag}"
+        local manifest_hash
+        local manifest
+        local attempt
+
+        manifest_hash="$(sha256sum <<<"${key}" | cut -d ' ' -f 1)"
+        manifest="${tmpdir}/${manifest_hash}"
+
+        if [[ -n "${upstream_digests[${key}]:-}" ]]; then
+            resolved_digest="${upstream_digests[${key}]}"
+            return
+        fi
+
+        for attempt in 1 2 3; do
+            : > "${manifest}"
+            if skopeo inspect --raw \
+                "docker://${upstream_registry}/${key}" > "${manifest}"
+            then
+                break
+            fi
+            if [[ "${attempt}" == "3" ]]; then
+                echo "Unable to inspect upstream image ${upstream_registry}/${key}" >&2
+                return 1
+            fi
+            sleep "$((5 * attempt))"
+        done
+
+        if [[ ! -s "${manifest}" ]]; then
+            echo "Unable to inspect upstream image ${upstream_registry}/${key}" >&2
+            return 1
+        fi
+
+        upstream_digests["${key}"]="sha256:$(sha256sum "${manifest}" | cut -d ' ' -f 1)"
+        resolved_digest="${upstream_digests[${key}]}"
+    }
+
+    variant_needs_rebuild() {
+        local image="$1"
+        local multi_arch="$2"
+        local base_digest="$3"
+        local arch oci_arch label inspect_error label_file attempt inspected
+        local -a arches=(x86_64)
+
+        if [[ "${multi_arch}" == "true" ]]; then
+            arches+=(aarch64)
+        fi
+
+        for arch in "${arches[@]}"; do
+            case "${arch}" in
+            x86_64)
+                oci_arch=amd64
+                ;;
+            aarch64)
+                oci_arch=arm64
+                ;;
+            esac
+
+            inspect_error="${tmpdir}/${image}-${arch}.inspect-error"
+            label_file="${tmpdir}/${image}-${arch}.label"
+            inspected=false
+            for attempt in 1 2 3; do
+                : > "${label_file}"
+                : > "${inspect_error}"
+                if skopeo inspect --override-arch "${oci_arch}" \
+                    --format '{{ '{{ index .Labels "org.opencontainers.image.base.digest" }}' }}' \
+                    "docker://${image_registry}/${image_name}:${image}" \
+                    > "${label_file}" 2>"${inspect_error}"
+                then
+                    label="$(< "${label_file}")"
+                    inspected=true
+                    break
+                fi
+                if [[ "${attempt}" != "3" ]]; then
+                    sleep "$((5 * attempt))"
+                fi
+            done
+
+            if [[ "${inspected}" != "true" ]]; then
+                if grep -qiE \
+                    'manifest unknown|name unknown|not found|no image found|status code: 404' \
+                    "${inspect_error}"
+                then
+                    # A missing published image is expected for new variants.
+                    return 0
+                fi
+                echo "Unable to inspect published image ${image}" >&2
+                cat "${inspect_error}" >&2
+                return 2
+            fi
+
+            if [[ "${label}" != "${base_digest}" ]]; then
+                return 0
+            fi
+        done
+
+        if ! retry cosign verify --new-bundle-format=false \
+            --key "${cosign_key}" \
+            "${image_registry}/${image_name}:${image}" >/dev/null
+        then
+            return 0
+        fi
+
+        return 1
+    }
 
     entries=$({{ YQ }} -r '
-        .flavors["{{ flavor }}"][] 
-        | select((.ci_enabled // false) == true) 
-        | .tag + " " + ((.multi_arch // false) | tostring)
+        .flavors["{{ flavor }}"][]
+        | select((.ci_enabled // false) == true)
+        | [.tag, .base_image, (.base_tag // "stable"),
+           ((.multi_arch // false) | tostring)]
+        | @tsv
     ' images.yaml)
 
     result="[]"
-    while read -r tag multi; do
+    while IFS=$'\t' read -r tag base_image base_tag multi; do
         [[ -z "$tag" ]] && continue
+        upstream_digest "${base_image}" "${base_tag}"
+        base_digest="${resolved_digest}"
+
+        if [[ "{{ changed_only }}" == "true" ]]; then
+            if variant_needs_rebuild "${tag}" "${multi}" "${base_digest}"; then
+                :
+            else
+                status=$?
+                if [[ "${status}" == "1" ]]; then
+                    echo "Skipping ${tag}; ${base_image}:${base_tag} is unchanged" >&2
+                    continue
+                fi
+                exit "${status}"
+            fi
+        fi
+
         if [[ "$multi" == "true" ]]; then
             result=$(echo "$result" | jq -c \
                 --arg img "$tag" \
+                --arg base_digest "${base_digest}" \
                 '. + [
-                    {image: $img, arch: "x86_64", runner: "ubuntu-26.04"},
-                    {image: $img, arch: "aarch64", runner: "ubuntu-26.04-arm"}
+                    {image: $img, arch: "x86_64", runner: "ubuntu-26.04", base_digest: $base_digest},
+                    {image: $img, arch: "aarch64", runner: "ubuntu-26.04-arm", base_digest: $base_digest}
                 ]')
         else
             result=$(echo "$result" | jq -c \
                 --arg img "$tag" \
-                '. + [{image: $img, arch: "x86_64", runner: "ubuntu-26.04"}]')
+                --arg base_digest "${base_digest}" \
+                '. + [{image: $img, arch: "x86_64", runner: "ubuntu-26.04", base_digest: $base_digest}]')
         fi
     done <<< "$entries"
 
@@ -97,7 +255,7 @@ clean:
 
 # Build Image
 [group('Image')]
-build image="bluefin":
+build image="bluefin" base_digest="":
     #!/usr/bin/env bash
     echo "::group:: Container Build Prep"
     set ${SET_X:+-x} -eou pipefail
@@ -111,11 +269,22 @@ build image="bluefin":
 
     # Read build metadata from images.yaml (single source of truth)
     BASE_TAG=$({{ YQ }} -r '.flavors[][] | select(.tag == "{{ image }}") | .base_tag // "stable"' images.yaml)
-    DIST_ABRV=$({{ YQ }} -r '.flavors[][] | select(.tag == "{{ image }}") | .dist_abrv // "fc"' images.yaml)
     DNF=$({{ YQ }} -r '.flavors[][] | select(.tag == "{{ image }}") | .dnf // "dnf5"' images.yaml)
 
     # Note: For the ucore family, base_image and base_tag are read directly from images.yaml.
     # No extra swapping is needed after the rename.
+
+    BASE_REF="${BASE_IMAGE}:${BASE_TAG}"
+    if [[ -n "{{ base_digest }}" ]]; then
+        if [[ ! "{{ base_digest }}" =~ ^sha256:[[:xdigit:]]{64}$ ]]; then
+            echo "Error: Invalid base digest '{{ base_digest }}'." >&2
+            exit 1
+        fi
+        BASE_DIGEST="{{ base_digest }}"
+    else
+        BASE_DIGEST="sha256:$(skopeo inspect --raw "docker://ghcr.io/ublue-os/${BASE_REF}" | sha256sum | cut -d ' ' -f 1)"
+    fi
+    BASE_REF+="@${BASE_DIGEST}"
 
     BUILD_ARGS=()
     TMPFILES=()
@@ -126,14 +295,14 @@ build image="bluefin":
 
     case "{{ image }}" in
     "ucore"*)
-        just verify-container "${BASE_IMAGE}":"${BASE_TAG}"
-        fedora_version="$(skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}" | jq -r '.Labels["org.opencontainers.image.version"]' | grep -oP '^(?:[[:alpha:]]+-)?\K[0-9]+')"
+        just verify-container "${BASE_REF}"
+        fedora_version="$(skopeo inspect "docker://ghcr.io/ublue-os/${BASE_REF}" | jq -r '.Labels["org.opencontainers.image.version"]' | grep -oP '^(?:[[:alpha:]]+-)?\K[0-9]+')"
         ;;
     *)
-        just verify-container "${BASE_IMAGE}":"${BASE_TAG}"
+        just verify-container "${BASE_REF}"
         inspect_json="$(mktemp -t inspect-{{ image }}.XXXXXXXXXX.json)"
         TMPFILES+=("${inspect_json}")
-        skopeo inspect docker://ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}" > "${inspect_json}"
+        skopeo inspect "docker://ghcr.io/ublue-os/${BASE_REF}" > "${inspect_json}"
         fedora_version="$(jq -r '.Labels["org.opencontainers.image.version"]' < "${inspect_json}" | grep -oP '^(?:[[:alpha:]]+-)?\K[0-9]+')"
         ;;
     esac
@@ -156,9 +325,11 @@ build image="bluefin":
     BUILD_ARGS+=("--label" "org.opencontainers.image.title={{ repo_image_name_styled }}")
     BUILD_ARGS+=("--label" "org.opencontainers.image.version=$VERSION")
     BUILD_ARGS+=("--label" "org.opencontainers.image.description={{ repo_image_name }} is my OCI image built from ublue projects. It mainly extends them for my uses.")
+    BUILD_ARGS+=("--label" "org.opencontainers.image.base.name=ghcr.io/ublue-os/${BASE_IMAGE}:${BASE_TAG}")
+    BUILD_ARGS+=("--label" "org.opencontainers.image.base.digest=${BASE_DIGEST}")
     BUILD_ARGS+=("--build-arg" "IMAGE={{ image }}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE=$BASE_IMAGE")
-    BUILD_ARGS+=("--build-arg" "BASE_TAG=$BASE_TAG")
+    BUILD_ARGS+=("--build-arg" "BASE_TAG=${BASE_TAG}@${BASE_DIGEST}")
     BUILD_ARGS+=("--build-arg" "SET_X=${SET_X:-}")
     BUILD_ARGS+=("--build-arg" "VERSION=$VERSION")
     BUILD_ARGS+=("--build-arg" "DNF=$DNF")
@@ -185,7 +356,7 @@ build image="bluefin":
     {{ PODMAN }} images
     echo "::endgroup::"
 
-    {{ PODMAN }} rmi ghcr.io/ublue-os/"${BASE_IMAGE}":"${BASE_TAG}"
+    {{ PODMAN }} rmi "ghcr.io/ublue-os/${BASE_REF}" || true
 
 # Chunk Image
 [group('Image')]
@@ -278,8 +449,9 @@ build-iso image="bluefin" ghcr="0" clean="0":
     just verify-container "build-container-installer" "ghcr.io/jasonn3" "https://raw.githubusercontent.com/JasonN3/build-container-installer/refs/heads/main/cosign.pub"
 
     mkdir -p {{ repo_image_name }}_build/{lorax_templates,flatpak-refs-{{ image }},output}
-    echo 'append etc/anaconda/profile.d/fedora-kinoite.conf "\\n[User Interface]\\nhidden_spokes =\\n    PasswordSpoke"' \
-         > {{ repo_image_name }}_build/lorax_templates/remove_root_password_prompt.tmpl
+    printf '%s\n' \
+        'append etc/anaconda/profile.d/fedora-kinoite.conf "\\n[User Interface]\\nhidden_spokes =\\n    PasswordSpoke"' \
+        > {{ repo_image_name }}_build/lorax_templates/remove_root_password_prompt.tmpl
 
     # Build from GHCR or localhost
     if [[ "{{ ghcr }}" == "1" ]]; then
@@ -369,7 +541,7 @@ build-iso image="bluefin" ghcr="0" clean="0":
     -v "${TEMP_FLATPAK_INSTALL_DIR}":/temp_flatpak_install_dir \
     "${IMAGE_FULL}" /temp_flatpak_install_dir/install-flatpaks.sh
 
-    VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect ${IMAGE_FULL} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]' | grep -oP '\K[0-9]+'')"
+    VERSION="$({{ SUDOIF }} {{ PODMAN }} inspect ${IMAGE_FULL} | jq -r '.[]["Config"]["Labels"]["org.opencontainers.image.version"]' | grep -oP '\K[0-9]+')"
     if [[ "{{ ghcr }}" == "1" && "{{ clean }}" == "1" ]]; then
         {{ SUDOIF }} {{ PODMAN }} rmi ${IMAGE_FULL}
     fi
@@ -568,3 +740,4 @@ lint-recipes:
     for recipe in build chunk build-iso run-iso; do
         just _lint-recipe "shellcheck -e SC2050,SC2194" "${recipe}" bluefin
     done
+    just _lint-recipe "shellcheck -e SC2050,SC2194" generate-ci-matrix Bazzite false

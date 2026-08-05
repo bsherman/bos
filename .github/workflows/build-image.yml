@@ -5,14 +5,12 @@ on:  # yamllint disable-line rule:truthy
     inputs:
       image_flavor:
         type: string
-      publish_schedule:
-        type: string
-        default: '41 6 * * 0'
 concurrency:
   group: >-
     ${{ github.workflow }}-${{ github.ref
     || github.run_id }}-${{ inputs.image_flavor }}
-  cancel-in-progress: true
+  # Do not interrupt a publishing run after it has pushed only some arches.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   IMAGE_REGISTRY: ghcr.io/bsherman
   IMAGE_NAME: bos
@@ -23,17 +21,51 @@ jobs:
     outputs:
       images: ${{ steps.images.outputs.images }}
       manifest_images: ${{ steps.images.outputs.manifest_images }}
-    runs-on: ubuntu-latest
+      publish: ${{ steps.images.outputs.publish }}
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Install Just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
+      - name: Install Skopeo
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: 'v3.1.2'
+      - name: Login to GHCR
+        shell: bash
+        run: |
+          echo "${{ github.token }}" | skopeo login ghcr.io \
+            --username "${{ github.actor }}" --password-stdin
       - name: Get Images for Build
         id: images
         shell: bash
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          images=$(just generate-ci-matrix "${{ inputs.image_flavor }}")
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            changed_only=true
+          else
+            changed_only=false
+          fi
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            publish=false
+          else
+            publish=true
+          fi
+
+          images=$(just generate-ci-matrix \
+            "${{ inputs.image_flavor }}" "${changed_only}")
           manifest_images=$(jq -c '
             reduce .[] as $e ({}; .[$e.image] = (.[$e.image] // []) + [$e.arch])
             | to_entries
@@ -41,6 +73,7 @@ jobs:
           ' <<<"$images")
           echo "images=$images" >> "$GITHUB_OUTPUT"
           echo "manifest_images=$manifest_images" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
   build-image:
     name: >-
       Build ${{ inputs.image_flavor }} Images
@@ -119,13 +152,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          # just build ${{ matrix.combo.image }}
+          # Pin the build to the upstream digest selected by get-images.
           sudo env \
             XDG_RUNTIME_DIR=/tmp \
             TMPDIR="${TMPDIR:-/tmp}" \
             PATH="$PATH" \
             GITHUB_TOKEN="$GITHUB_TOKEN" \
-            just build ${{ matrix.combo.image }}
+            just build ${{ matrix.combo.image }} \
+              ${{ matrix.combo.base_digest }}
 
       - name: Show disk space (after build)
         if: ${{ always() && steps.build.conclusion != 'skipped' }}
@@ -165,6 +199,16 @@ jobs:
         shell: bash
         run: |
           just load-chunked-oci ${{ matrix.combo.image }}
+
+      - name: Verify upstream base metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${{ matrix.combo.image }}"
+          local_image="localhost/${{ env.IMAGE_NAME }}:${image}"
+          base_digest=$(podman inspect "${local_image}" | jq -r \
+            '.[0].Config.Labels["org.opencontainers.image.base.digest"]')
+          test "$base_digest" = "${{ matrix.combo.base_digest }}"
 
       - name: Show disk space (after load)
         if: ${{ always() && steps.load.conclusion != 'skipped' }}
@@ -220,9 +264,7 @@ jobs:
           string: ${{ env.IMAGE_REGISTRY }}
       - name: Push to GHCR
         id: push
-        if: >-
-          contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == inputs.publish_schedule
+        if: ${{ needs.get-images.outputs.publish == 'true' }}
         env:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ github.token }}
@@ -235,9 +277,7 @@ jobs:
       - name: Push Chunked Image to GHCR
         uses: ./.github/actions/push-image
         id: push_chunked
-        if: >-
-          contains(fromJson('["workflow_dispatch", "merge_group"]'),
-          github.event_name) || github.event.schedule == inputs.publish_schedule
+        if: ${{ needs.get-images.outputs.publish == 'true' }}
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ matrix.combo.image }}
           image-name: ${{ env.IMAGE_NAME }}
@@ -248,8 +288,7 @@ jobs:
     name: Create Manifest (${{ matrix.entry.image }})
     needs: [get-images, build-image]
     if: >-
-      (contains(fromJson('["workflow_dispatch", "merge_group"]'),
-      github.event_name) || github.event.schedule == inputs.publish_schedule)
+      needs.get-images.outputs.publish == 'true'
       && needs.get-images.outputs.manifest_images != '[]'
     runs-on: ubuntu-26.04
     permissions:
@@ -382,13 +421,15 @@ jobs:
     name: Check Build ${{ inputs.image_flavor }} Images Successful
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    needs: [build-image, create-manifest]
+    needs: [get-images, build-image, create-manifest]
     steps:
       - name: Exit on failure
         if: >-
-          ${{ contains(fromJson('["failure", "skipped"]'),
+          needs.get-images.result == 'failure'
+          || (needs.get-images.outputs.images != '[]'
+          && (contains(fromJson('["failure", "skipped"]'),
           needs.build-image.result)
-          || needs.create-manifest.result == 'failure' }}
+          || needs.create-manifest.result == 'failure'))
         shell: bash
         run: exit 1
       - name: Exit

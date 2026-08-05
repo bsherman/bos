@@ -55,6 +55,14 @@ These images are signed with sigstore's [cosign](https://docs.sigstore.dev/cosig
 cosign verify --key cosign.pub ghcr.io/bsherman/bos:TAG
 ```
 
+## Build Scheduling
+
+Scheduled builds compare each variant's exact upstream image digest with the
+digest recorded on its signed published image. Only scheduled variants whose
+upstream image changed are rebuilt and published. Pull requests always build
+enabled variants for validation but do not publish; merges to `main` publish
+all enabled variants.
+
 ## DIY
 
 This repo was built on the [Universal Blue Image Template](https://github.com/ublue-os/image-template) though it's been added to significantly.

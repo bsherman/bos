@@ -376,7 +376,7 @@ jobs:
           IMAGE_DIGEST="$(cat "${DIGESTFILE}")"
 
           podman manifest create "${IMAGE}:${VERSION}"
-          add_arches "${IMAGE}:${VERSION}" "${VERSION}"
+          add_arches "${IMAGE}:${VERSION}" "${IMAGE_TAG}"
           podman manifest push \
             --all=false \
             --digestfile "${DIGESTFILE}" \

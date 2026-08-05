@@ -12,9 +12,6 @@ fi
 packages=(
     7zip
     bc
-    binutils
-    cpp
-    git-lfs
     ipcalc
     iperf3
     libsodium
@@ -32,9 +29,56 @@ packages=(
     zip
 )
 
-# virtiofsd for bcvk; skip ucore-minimal variants
+# Keep ucore-minimal images free of development and bcvk dependencies.
+# NOTE: all packages in this script are candidates for sysext
 if [[ ! ${IMAGE} =~ ucore-minimal ]]; then
+    # bcvk dependency
     packages+=(virtiofsd)
+
+    # C development (explicit reproduction of dnf "c-development" group)
+    packages+=(
+        autoconf
+        automake
+        binutils
+        bison
+        byacc
+        ccache
+        cscope
+        ctags
+        elfutils
+        flex
+        gcc
+        gcc-c++
+        gdb
+        glibc-devel
+        indent
+        libtool
+        ltrace
+        make
+        perf
+        pkgconf
+        strace
+        valgrind
+    )
+
+    # Development tools (other)
+    packages+=(
+        cmake
+        diffstat
+        expect
+        git-lfs
+        llvm
+        ninja-build
+        patch
+        patchutils
+    )
+
+    # Python
+    packages+=(
+        python3
+        python3-pip
+        python3-virtualenv
+    )
 fi
 
 $DNF install -y "${packages[@]}"

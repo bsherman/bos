@@ -50,13 +50,13 @@ generate-ci-matrix flavor:
             result=$(echo "$result" | jq -c \
                 --arg img "$tag" \
                 '. + [
-                    {image: $img, arch: "x86_64", runner: "ubuntu-24.04"},
-                    {image: $img, arch: "aarch64", runner: "ubuntu-24.04-arm"}
+                    {image: $img, arch: "x86_64", runner: "ubuntu-26.04"},
+                    {image: $img, arch: "aarch64", runner: "ubuntu-26.04-arm"}
                 ]')
         else
             result=$(echo "$result" | jq -c \
                 --arg img "$tag" \
-                '. + [{image: $img, arch: "x86_64", runner: "ubuntu-24.04"}]')
+                '. + [{image: $img, arch: "x86_64", runner: "ubuntu-26.04"}]')
         fi
     done <<< "$entries"
 

@@ -50,7 +50,6 @@ if [[ ! ${IMAGE} =~ ucore-minimal ]]; then
         cmake \
         diffstat \
         expect \
-        git-lfs \
         ninja-build \
         patch \
         patchutils

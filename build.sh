@@ -2,11 +2,6 @@
 
 set -eou pipefail
 
-#Common
-echo "::group:: ===Remove CLI Wrap==="
-/ctx/build_scripts/remove-cliwrap.sh
-echo "::endgroup::"
-
 # Changes
 case "${IMAGE}" in
 "bluefin"*)

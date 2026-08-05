@@ -7,18 +7,24 @@
 #   - ci_enabled: true   (fedora-desktop + ucore bases)
 #   - multi_arch: true   (ucore base only)
 #
-# Booleans default as above. Only override when you want different behavior
-# (e.g. Bluefin sets ci_enabled: false; single-arch ucore variants set multi_arch: false).
+# Booleans default as above. Only override when you want different behavior.
+# For example, Bluefin sets ci_enabled: false and single-arch ucore variants
+# set multi_arch: false.
 #
 # Field Key:
-#   tag          : Name used with `just build <tag>` and for the final published image tags.
-#   base_image   : Upstream image name under ghcr.io/ublue-os/ (the part before the colon in FROM/inspect).
+#   tag          : Name used with `just build <tag>` and for published tags.
+#   base_image   : Upstream image name under ghcr.io/ublue-os/.
+#                  It is the part before the colon in FROM/inspect.
 #   base_tag     : Tag to use on the upstream base image.
-#   multi_arch   : Build this variant for both x86_64 and aarch64? Defaults to false.
-#   ci_enabled   : Include this variant in GitHub Actions CI builds? Defaults to false.
-#   dist_abrv    : Distribution abbreviation used in the build ("fc" for Fedora, "el" for Enterprise Linux).
+#   multi_arch   : Build this variant for both x86_64 and aarch64?
+#                  Defaults to false.
+#   ci_enabled   : Include this variant in GitHub Actions CI builds?
+#                  Defaults to false.
+#   dist_abrv    : Distribution abbreviation used in the build.
+#                  "fc" is Fedora and "el" is Enterprise Linux.
 #   dnf          : Package manager to use during the build ("dnf5" or "dnf").
 
+---
 templates:
   fedora-desktop: &fedora-desktop
     dist_abrv: fc

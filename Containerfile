@@ -1,11 +1,10 @@
-ARG BASE_IMAGE="bluefin"
-ARG BASE_TAG="stable-daily@sha256:2d7b7ea13d91092f6bdb7b710b2baba649c2c577c668e3df1635ed6e52a18a03"
+ARG BASE_REF="ucore-minimal:stable"
 ARG IMAGE="bluefin"
 
 FROM scratch AS ctx
 COPY / /
 
-FROM ghcr.io/ublue-os/${BASE_IMAGE}:${BASE_TAG}
+FROM ghcr.io/ublue-os/${BASE_REF}
 
 ARG BASE_IMAGE="bluefin"
 ARG DNF=""

@@ -274,7 +274,7 @@ build image="bluefin" base_digest="":
     # Note: For the ucore family, base_image and base_tag are read directly from images.yaml.
     # No extra swapping is needed after the rename.
 
-    BASE_REF="${BASE_IMAGE}:${BASE_TAG}"
+    BASE_TAG_REF="${BASE_IMAGE}:${BASE_TAG}"
     if [[ -n "{{ base_digest }}" ]]; then
         if [[ ! "{{ base_digest }}" =~ ^sha256:[[:xdigit:]]{64}$ ]]; then
             echo "Error: Invalid base digest '{{ base_digest }}'." >&2
@@ -282,9 +282,9 @@ build image="bluefin" base_digest="":
         fi
         BASE_DIGEST="{{ base_digest }}"
     else
-        BASE_DIGEST="sha256:$(skopeo inspect --raw "docker://ghcr.io/ublue-os/${BASE_REF}" | sha256sum | cut -d ' ' -f 1)"
+        BASE_DIGEST="sha256:$(skopeo inspect --raw "docker://ghcr.io/ublue-os/${BASE_TAG_REF}" | sha256sum | cut -d ' ' -f 1)"
     fi
-    BASE_REF+="@${BASE_DIGEST}"
+    BASE_REF="${BASE_IMAGE}@${BASE_DIGEST}"
 
     BUILD_ARGS=()
     TMPFILES=()
@@ -329,7 +329,7 @@ build image="bluefin" base_digest="":
     BUILD_ARGS+=("--label" "org.opencontainers.image.base.digest=${BASE_DIGEST}")
     BUILD_ARGS+=("--build-arg" "IMAGE={{ image }}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE=$BASE_IMAGE")
-    BUILD_ARGS+=("--build-arg" "BASE_TAG=${BASE_TAG}@${BASE_DIGEST}")
+    BUILD_ARGS+=("--build-arg" "BASE_REF=$BASE_REF")
     BUILD_ARGS+=("--build-arg" "SET_X=${SET_X:-}")
     BUILD_ARGS+=("--build-arg" "VERSION=$VERSION")
     BUILD_ARGS+=("--build-arg" "DNF=$DNF")

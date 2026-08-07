@@ -5,6 +5,12 @@ on:  # yamllint disable-line rule:truthy
     inputs:
       image_flavor:
         type: string
+      changed_only:
+        description: >-
+          Select only variants whose upstream base digest changed.
+          Scheduled runs always do this regardless of this input.
+        type: boolean
+        default: false
 concurrency:
   group: >-
     ${{ github.workflow }}-${{ github.ref
@@ -52,7 +58,8 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+          if [[ "${{ inputs.changed_only }}" == "true" \
+             || "${{ github.event_name }}" == "schedule" ]]; then
             changed_only=true
           else
             changed_only=false
@@ -74,11 +81,27 @@ jobs:
           echo "images=$images" >> "$GITHUB_OUTPUT"
           echo "manifest_images=$manifest_images" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
+          # An empty matrix is a normal outcome on scheduled runs; say so on
+          # the run page rather than only in this job's log.
+          {
+            echo "## ${{ inputs.image_flavor }} build matrix"
+            echo
+            if [[ "$images" == "[]" ]]; then
+              echo "No variants need rebuilding: every published image"
+              echo "already records the current upstream base digest."
+            else
+              jq -r '.[] | "- `\(.image)` (\(.arch))"' <<<"$images"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
   build-image:
     name: >-
       Build ${{ inputs.image_flavor }} Images
       (${{ matrix.combo.image }}/${{ matrix.combo.arch }})
     needs: get-images
+    # GitHub fails the entire run -- with no failing job and no annotation --
+    # when a strategy matrix expression evaluates to []. Skip the job instead.
+    if: ${{ needs.get-images.outputs.images != '[]' }}
     runs-on: ${{ matrix.combo.runner }}
     continue-on-error: false
     permissions:

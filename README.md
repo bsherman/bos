@@ -58,13 +58,10 @@ cosign verify --key cosign.pub ghcr.io/bsherman/bos:TAG
 ## Build Scheduling
 
 Scheduled builds compare each variant's exact upstream image digest with the
-digest recorded on its signed published image. Only scheduled variants whose
-upstream image changed are rebuilt and published. Pull requests always build
-enabled variants for validation but do not publish; merges to `main` publish
-all enabled variants.
-
-Workflows run daily. The first scheduled run after adding digest metadata
-rebuilds every enabled variant because existing published images lack it.
+digest recorded on its signed published image, and skip variants that haven't
+changed. See [docs/design/build-scheduling.md](docs/design/build-scheduling.md)
+for the full mechanism and [ADR-0003](docs/adr/0003-digest-based-conditional-rebuild-scheduling.md)
+for why.
 
 ## DIY
 
@@ -89,3 +86,8 @@ The build system is intentionally straightforward:
 - `Justfile` — Local development commands (`just build`, `just lint`, `just format`, etc.).
   Image variants and build metadata are defined in `images.yaml`.
 - `Containerfile` — Minimal definition that copies everything and invokes `build.sh`
+
+See [docs/README.md](docs/README.md) for architecture decisions, design docs,
+specs, and plans. `AGENTS.md` holds the conventions coding agents follow in
+this repo (`CLAUDE.md`/`GEMINI.md`/`.github/copilot-instructions.md` are
+symlinks to it).

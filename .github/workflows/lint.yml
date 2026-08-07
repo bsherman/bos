@@ -1,0 +1,37 @@
+---
+name: Lint
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  lint:
+    name: Shell, YAML, and Justfile Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Just
+        uses: >-
+          extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3
+
+      - name: Install Linters
+        shell: bash
+        run: |
+          # shellcheck is preinstalled on GitHub-hosted Ubuntu runners.
+          shellcheck --version
+          pipx install yamllint
+
+      - name: Lint
+        shell: bash
+        run: just lint

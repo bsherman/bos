@@ -1,6 +1,8 @@
+.claude/settings.local.json
 cosign.key
-AGENTS.md
-CLAUDE.md
 bos_*.oci
 bos_*.config.json
 version.txt
+changelog*.md
+output*.env
+previous.manifest.json

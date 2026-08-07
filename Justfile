@@ -713,7 +713,8 @@ merge-changelog:
 
 lint:
     # shell
-    /usr/bin/find . -iname "*.sh" -type f -exec shellcheck "{}" ';'
+    # Note: -exec ... + (not ';') so a shellcheck failure fails this recipe.
+    /usr/bin/find . -iname "*.sh" -type f -exec shellcheck "{}" +
     # yaml
     yamllint -s {{ justfile_dir() }}
     # just
@@ -730,10 +731,15 @@ format:
     just fix
 
 _lint-recipe linter recipe *args:
-    just -n {{ recipe }} {{ args }} 2>&1 | tee /tmp/{{ recipe }} >/dev/null && \
-    echo "Linting {{ recipe }} with {{ linter }}" && \
-    {{ linter }} /tmp/{{ recipe }} && rm /tmp/{{ recipe }} || \
-    rm /tmp/{{ recipe }}
+    #!/usr/bin/env bash
+    set ${SET_X:+-x} -eou pipefail
+    # The rendered recipe is linted from a temp file; the trap guarantees
+    # cleanup without swallowing the linter's exit status.
+    lintfile="$(mktemp -t lint-{{ recipe }}.XXXXXXXXXX)"
+    trap 'rm -f "${lintfile}"' EXIT
+    just -n {{ recipe }} {{ args }} > "${lintfile}" 2>&1
+    echo "Linting {{ recipe }} with {{ linter }}"
+    {{ linter }} "${lintfile}"
 
 lint-recipes:
     #!/usr/bin/bash

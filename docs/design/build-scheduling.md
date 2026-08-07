@@ -1,7 +1,8 @@
 # Build scheduling
 
 Living document. Rationale:
-[ADR-0003](../adr/0003-digest-based-conditional-rebuild-scheduling.md).
+[ADR-0003](../adr/0003-digest-based-conditional-rebuild-scheduling.md),
+[ADR-0004](../adr/0004-gate-pr-builds-on-lint-and-changed-paths.md).
 
 ## Overview
 
@@ -11,21 +12,41 @@ currently published, signed image before deciding what to build, so unchanged
 variants are skipped on daily scheduled runs.
 
 ```
-schedule/push/PR ──► get-images (just generate-ci-matrix)
-                        │
-                        ▼
-                  build-image (matrix: image × arch)
-                        │
-                        ▼
-                  create-manifest (multi-arch manifest, sign, push)
+schedule/push ──────────────────────────────────┐
+                                                  │
+pull_request ──► pr-checks.yml                   │
+                    ├─ lint                       │
+                    └─ changes ──── (gated) ──────┤
+                                                  ▼
+                                    get-images (just generate-ci-matrix)
+                                                  │
+                                                  ▼
+                                    build-image (matrix: image × arch)
+                                                  │
+                                                  ▼
+                                    create-manifest (multi-arch manifest,
+                                                       sign, push)
 ```
 
 ## Design
 
 `.github/workflows/build-desktop.yml` and `build-server.yml` both call the
 reusable `build-image.yml` workflow with an `image_flavor` (`Bazzite` /
-`Server`), on a daily `schedule`, on `push`/`pull_request` to `main`, and on
-`workflow_dispatch`.
+`Server`), on a daily `schedule`, on `push` to `main`, on `workflow_call`
+(invoked by `pr-checks.yml` for pull requests — see below), and on
+`workflow_dispatch`. Neither declares its own `pull_request` trigger;
+`.github/workflows/pr-checks.yml` is the sole entry point for
+`pull_request` events targeting `main`
+([ADR-0004](../adr/0004-gate-pr-builds-on-lint-and-changed-paths.md)).
+
+**Pull request gating** — `pr-checks.yml` runs `lint` (a `workflow_call` to
+`lint.yml`) and `changes` (an inline `git diff` against the PR's base/head
+SHAs, checked against an ignore-pattern list mirroring
+`build-desktop.yml`/`build-server.yml`'s `push.paths-ignore`) in parallel,
+then runs `build-desktop`/`build-server` only if lint succeeded and
+`changes` found at least one non-ignored path. A PR touching only files
+covered by the ignore list never triggers a build; a PR with a lint failure
+never triggers a build either, regardless of what files changed.
 
 **`get-images` job** runs `just generate-ci-matrix <flavor> <changed_only>`
 (`changed_only=true` only on `schedule` events):
@@ -58,6 +79,10 @@ resolved version tag, and signs both with Cosign.
 
 ## Operational notes
 
+- The PR-time ignore list in `pr-checks.yml`'s `changes` job and the
+  push-time `paths-ignore` on `build-desktop.yml`/`build-server.yml` are two
+  independent, hand-maintained copies of the same list — if a PR's build
+  unexpectedly does or doesn't skip, check both for drift.
 - The first scheduled run after this mechanism shipped rebuilds every enabled
   variant, since existing published images predate the `base.digest` label.
 - `pull_request` runs always set `changed_only=false` (build everything,
@@ -87,6 +112,7 @@ resolved version tag, and signs both with Cosign.
 
 ## References
 
-- Rationale: [ADR-0003](../adr/0003-digest-based-conditional-rebuild-scheduling.md)
+- Rationale: [ADR-0003](../adr/0003-digest-based-conditional-rebuild-scheduling.md),
+  [ADR-0004](../adr/0004-gate-pr-builds-on-lint-and-changed-paths.md)
 - Built in: already shipped (PR #43 and follow-ups); not tracked in a
   `docs/plans/` roadmap retroactively.

@@ -16,6 +16,7 @@ Docs are split by the question they answer:
 - [0001 — Record architecture decisions](adr/0001-record-architecture-decisions.md)
 - [0002 — Agent-portable instruction surface](adr/0002-agent-portable-instruction-surface.md)
 - [0003 — Digest-based conditional rebuild scheduling](adr/0003-digest-based-conditional-rebuild-scheduling.md)
+- [0004 — Gate PR builds on lint and changed paths](adr/0004-gate-pr-builds-on-lint-and-changed-paths.md)
 
 ### Design
 

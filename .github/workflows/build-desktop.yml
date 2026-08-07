@@ -16,19 +16,6 @@ on:  # yamllint disable-line rule:truthy
       - ".github/semantic.yml"
       - ".claude/**"
       - ".github/workflows/cleanup-old-images.yml"
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "**.md"
-      - "LICENSE"
-      - ".editorconfig"
-      - ".gitignore"
-      - "yamlfmt.yml"
-      - ".github/renovate.json"
-      - ".github/semantic.yml"
-      - ".claude/**"
-      - ".github/workflows/cleanup-old-images.yml"
   workflow_call:
   workflow_dispatch:
 permissions:

@@ -42,23 +42,24 @@ trigger entirely; they retain `schedule`, `push` (with its existing
 to `main`, `schedule`, and `workflow_dispatch` runs are therefore completely
 unaffected — only the `pull_request` path is restructured.
 
-`pr-checks.yml` declares `permissions: {contents: read, packages: read}` at
-its top level — narrower than the `contents: write, packages: write,
-id-token: write` the build workflows declare for their own direct triggers
-today, but not as narrow as `contents: read` alone. `packages: read` is
-required because a `workflow_call` chain's effective `GITHUB_TOKEN`
-permissions are capped by the *root* (directly-triggered) workflow's
-top-level grant, regardless of what individual jobs further down the chain
-request — and `build-image.yml`'s `get-images` job (which declares its own
-`permissions: {contents: read, packages: read}`) runs its "Login to GHCR"
-and `skopeo inspect` steps unconditionally on every trigger, including PR
-runs, to resolve upstream/published-image digests for the build matrix.
-Without `packages: read` at the root, that login step would fail on every
-PR run. `packages: write`/`id-token: write` genuinely are unused on this
-path: they only matter inside `build-image`'s "Push to GHCR" step and
-`create-manifest`, both gated on `needs.get-images.outputs.publish ==
-'true'`, and `publish` is always `false` for PR-triggered runs — so
-omitting them from `pr-checks.yml`'s grant is safe.
+`pr-checks.yml` declares `permissions: {contents: write, packages: write,
+id-token: write}` at its top level, matching exactly what
+`build-desktop.yml`/`build-server.yml` already declare for their own direct
+triggers. This looks broader than what a PR run actually exercises —
+`packages: write`/`id-token: write` only matter inside `build-image`'s
+"Push to GHCR" step and `create-manifest`, both gated on
+`needs.get-images.outputs.publish == 'true'`, and `publish` is always
+`false` for PR-triggered runs. But GitHub validates a `uses:` call against
+the *full* top-level `permissions:` block the called reusable workflow
+declares, not just the subset its currently-reachable steps happen to use —
+a caller granting anything less fails immediately at dispatch time (`The
+workflow is requesting '...', but is only allowed '...'`), before any job
+runs. A narrower grant (`contents: read, packages: read` — matching what
+`get-images`'s unconditional GHCR login and digest-inspection steps
+actually need) was tried and rejected for exactly this reason: it satisfies
+every step PR runs actually reach, but not the static permission check
+GitHub performs against `build-desktop.yml`/`build-server.yml`'s declared
+requirement.
 
 ## Consequences
 
@@ -75,13 +76,13 @@ omitting them from `pr-checks.yml`'s grant is safe.
   `push` trigger, and the bash `ignore_patterns` array in `pr-checks.yml`'s
   `changes` job. No automated check enforces they match — see
   `docs/design/build-scheduling.md` Operational notes.
-- Effective `GITHUB_TOKEN` permissions on PR runs are now scoped to
-  `contents: read, packages: read` — matching what `get-images` actually
-  needs to authenticate against GHCR for digest inspection — rather than
-  mirroring the broader `contents: write, packages: write, id-token: write`
-  grant the build workflows declare for push/schedule runs, whose write and
-  OIDC privileges are never exercised on a PR run since `publish` is always
-  `false`.
+- Effective `GITHUB_TOKEN` permissions on PR runs match the full
+  `contents: write, packages: write, id-token: write` grant
+  `build-desktop.yml`/`build-server.yml` already use for push/schedule
+  runs, even though PR runs never exercise the write/OIDC scopes
+  (`publish` is always `false`). This is required by GitHub's static
+  permission check on `uses:` calls, not by anything a PR run actually
+  does — see Decision.
 - `push`/`schedule`/`workflow_dispatch` triggers, and everything inside
   `build-image.yml`, are untouched.
 

@@ -1,0 +1,108 @@
+# 0004 — Gate PR builds on lint and changed paths
+
+- **Status:** Accepted
+- **Date:** 2026-08-07
+
+## Context
+
+On `pull_request` to `main`, `lint.yml`, `build-desktop.yml`, and
+`build-server.yml` currently trigger independently and run in parallel.
+Lint (shellcheck/yamllint/Justfile checks) typically finishes in well under
+a minute; `build-desktop.yml`/`build-server.yml` each `uses:` the reusable
+`build-image.yml` workflow to build every enabled multi-arch image variant
+for validation (per ADR-0003, PRs always set `changed_only=false`), which
+can run for many minutes across several runners. A PR with a trivial shell
+syntax error still pays for the full expensive build, since nothing
+coordinates the three workflows. Separately, `build-desktop.yml`/
+`build-server.yml` already skip themselves for docs-only PRs via a
+`paths-ignore` list on their `pull_request` trigger, but that only works as
+a trigger-level filter — it can't be preserved as-is once the build
+workflows stop declaring their own `pull_request` trigger.
+
+## Decision
+
+A new `.github/workflows/pr-checks.yml` becomes the sole entry point for
+`pull_request` events targeting `main`. It runs:
+
+- `lint`: calls `lint.yml` via `workflow_call`.
+- `changes`: checks out full history and diffs the PR's base/head SHAs,
+  checking each changed file against an ignore-pattern list that mirrors
+  `build-desktop.yml`/`build-server.yml`'s existing push-trigger
+  `paths-ignore` list, via an inline bash step (no third-party action).
+  Emits a `relevant` boolean job output.
+- `build-desktop` / `build-server`: each `needs: [lint, changes]`, gated on
+  `if: success() && needs.changes.outputs.relevant == 'true'` — the
+  explicit `success()` is required because adding any custom `if:` to a job
+  with `needs:` replaces GitHub's implicit "all needed jobs succeeded"
+  check, so a lint failure would not otherwise actually block the build.
+
+`build-desktop.yml` and `build-server.yml` drop their own `pull_request`
+trigger entirely; they retain `schedule`, `push` (with its existing
+`paths-ignore`), `workflow_call`, and `workflow_dispatch` unchanged. `push`
+to `main`, `schedule`, and `workflow_dispatch` runs are therefore completely
+unaffected — only the `pull_request` path is restructured.
+
+`pr-checks.yml` declares `permissions: {contents: read, packages: read}` at
+its top level — narrower than the `contents: write, packages: write,
+id-token: write` the build workflows declare for their own direct triggers
+today, but not as narrow as `contents: read` alone. `packages: read` is
+required because a `workflow_call` chain's effective `GITHUB_TOKEN`
+permissions are capped by the *root* (directly-triggered) workflow's
+top-level grant, regardless of what individual jobs further down the chain
+request — and `build-image.yml`'s `get-images` job (which declares its own
+`permissions: {contents: read, packages: read}`) runs its "Login to GHCR"
+and `skopeo inspect` steps unconditionally on every trigger, including PR
+runs, to resolve upstream/published-image digests for the build matrix.
+Without `packages: read` at the root, that login step would fail on every
+PR run. `packages: write`/`id-token: write` genuinely are unused on this
+path: they only matter inside `build-image`'s "Push to GHCR" step and
+`create-manifest`, both gated on `needs.get-images.outputs.publish ==
+'true'`, and `publish` is always `false` for PR-triggered runs — so
+omitting them from `pr-checks.yml`'s grant is safe.
+
+## Consequences
+
+- A failing lint step now prevents the expensive multi-arch build from
+  running at all on a PR, cutting CI time and time-to-signal on trivial
+  errors.
+- Docs-only / ignored-path PRs still skip the expensive build, matching
+  today's behavior, but the build jobs now appear as **skipped** entries in
+  the PR's checks list rather than not appearing at all (today's
+  trigger-level `paths-ignore` means the workflow simply never runs). Minor
+  visibility change, not a functional regression.
+- The build-relevance ignore list now exists in two hand-maintained places:
+  the YAML `paths-ignore` on `build-desktop.yml`'s/`build-server.yml`'s
+  `push` trigger, and the bash `ignore_patterns` array in `pr-checks.yml`'s
+  `changes` job. No automated check enforces they match — see
+  `docs/design/build-scheduling.md` Operational notes.
+- Effective `GITHUB_TOKEN` permissions on PR runs are now scoped to
+  `contents: read, packages: read` — matching what `get-images` actually
+  needs to authenticate against GHCR for digest inspection — rather than
+  mirroring the broader `contents: write, packages: write, id-token: write`
+  grant the build workflows declare for push/schedule runs, whose write and
+  OIDC privileges are never exercised on a PR run since `publish` is always
+  `false`.
+- `push`/`schedule`/`workflow_dispatch` triggers, and everything inside
+  `build-image.yml`, are untouched.
+
+## Alternatives considered
+
+- **`workflow_run`-based gating** (have `build-desktop.yml`/
+  `build-server.yml` trigger off `lint.yml`'s completion via
+  `workflow_run`): rejected — adds indirection, doesn't attach cleanly to
+  the PR's head SHA without extra Checks API bookkeeping, jobs don't show
+  as pending in the PR checks list until lint finishes, and it still
+  wouldn't solve the docs-only-PR path-filtering problem on its own.
+- **`dorny/paths-filter` (or similar third-party action):** rejected in
+  favor of an inline `git diff` step, to avoid adding a third-party action
+  to a workflow chain that already carries publish-capable permissions and
+  signing secrets, and to keep the mirrored ignore-list logic inline,
+  auditable, and consistent with the rest of the repo's hand-written bash.
+- **Dropping the path-filter optimization** (always run the full build
+  regardless of changed paths): rejected — would regress from today's
+  behavior, wasting more CI time, not less.
+
+## References
+
+- Shapes: [docs/design/build-scheduling.md](../design/build-scheduling.md)
+- Builds on: [ADR-0003](0003-digest-based-conditional-rebuild-scheduling.md)

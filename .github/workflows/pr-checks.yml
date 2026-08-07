@@ -1,0 +1,88 @@
+---
+name: PR Checks
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+    branches:
+      - main
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+
+  changes:
+    name: Detect Relevant Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      relevant: ${{ steps.diff.outputs.relevant }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Determine if build-relevant files changed
+        id: diff
+        shell: bash
+        run: |
+          set -eou pipefail
+
+          # Mirrors the paths-ignore list on build-desktop.yml's and
+          # build-server.yml's push trigger. Keep these two lists in sync
+          # by hand -- see docs/design/build-scheduling.md Operational
+          # notes.
+          ignore_patterns=(
+            "*.md"
+            "LICENSE"
+            ".editorconfig"
+            ".gitignore"
+            "yamlfmt.yml"
+            ".github/renovate.json"
+            ".github/semantic.yml"
+            ".claude/*"
+            ".github/workflows/cleanup-old-images.yml"
+          )
+
+          is_ignored() {
+            local f="$1" pattern
+            for pattern in "${ignore_patterns[@]}"; do
+              # shellcheck disable=SC2053
+              [[ "$f" == $pattern ]] && return 0
+            done
+            return 1
+          }
+
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+
+          relevant=false
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            if ! is_ignored "$file"; then
+              relevant=true
+              break
+            fi
+          done < <(git diff --name-only "$base" "$head")
+
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+
+  build-desktop:
+    name: Build Desktop
+    needs: [lint, changes]
+    if: success() && needs.changes.outputs.relevant == 'true'
+    uses: ./.github/workflows/build-desktop.yml
+    secrets: inherit
+
+  build-server:
+    name: Build Server
+    needs: [lint, changes]
+    if: success() && needs.changes.outputs.relevant == 'true'
+    uses: ./.github/workflows/build-server.yml
+    secrets: inherit

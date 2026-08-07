@@ -17,7 +17,19 @@ on:  # yamllint disable-line rule:truthy
       - ".claude/**"
       - ".github/workflows/cleanup-old-images.yml"
   workflow_call:
+    inputs:
+      changed_only:
+        description: >-
+          Build only variants whose upstream base digest changed.
+        type: boolean
+        default: false
   workflow_dispatch:
+    inputs:
+      changed_only:
+        description: >-
+          Build only variants whose upstream base digest changed.
+        type: boolean
+        default: false
 permissions:
   contents: write
   packages: write
@@ -33,3 +45,4 @@ jobs:
         image_flavor: ["Bazzite"]
     with:
       image_flavor: ${{ matrix.image_flavor }}
+      changed_only: ${{ inputs.changed_only || false }}

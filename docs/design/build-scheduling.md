@@ -65,8 +65,13 @@ never triggers a build either, regardless of what files changed.
 - The matrix job emits `images` (flat list of `{image, arch, runner,
   base_digest}`) and `manifest_images` (grouped by image, for the later
   multi-arch manifest step), plus `publish` (`true` except on `pull_request`).
+  It also writes the selection to `$GITHUB_STEP_SUMMARY` — the chosen
+  image/arch pairs, or "No variants need rebuilding" — so a no-op run
+  explains itself on the run page.
 
-**`build-image` job** runs `just build <image> <base_digest>` per matrix
+**`build-image` job** is guarded by
+`if: needs.get-images.outputs.images != '[]'`, then runs
+`just build <image> <base_digest>` per matrix
 entry, pinning the build to the exact digest the matrix already resolved
 (not re-resolving the tag, which could have moved). It labels the built image
 with `org.opencontainers.image.base.digest=<base_digest>` and a "Verify
@@ -91,6 +96,21 @@ resolved version tag, and signs both with Cosign.
 - Pushes to `main` always publish every enabled variant that built,
   regardless of digest state — publishing is driven by the git event, not by
   whether a rebuild was "needed."
+- An empty matrix is the normal steady state for a scheduled run once every
+  variant is current, and it is why `build-image` carries
+  `if: needs.get-images.outputs.images != '[]'`. Without that guard GitHub
+  fails the *entire run* when a `strategy.matrix` expression evaluates to
+  `[]` ("Matrix vector 'combo' does not contain any values") — the job is
+  never created, so nothing shows as failed, there is no annotation, and
+  `gh run view --log-failed` is empty. Do not remove the guard.
+  `create-manifest` (`manifest_images != '[]'`) and `check`'s "Exit on
+  failure" step already tolerate the same empty-matrix case.
+- `build-desktop.yml` and `build-server.yml` accept a `changed_only` boolean
+  on `workflow_dispatch`, which forces the scheduled-run selection path
+  (including the empty matrix) on demand:
+  `gh workflow run build-desktop.yml -f changed_only=true`. Scheduled runs
+  select changed-only regardless of the input; every other trigger defaults
+  to `false`.
 - To debug why a variant was or wasn't selected on a scheduled run, check the
   "Get Images for Build" job's log output from `just generate-ci-matrix`
   (`stderr` prints `Skipping <tag>; <base>:<tag> is unchanged` for skipped

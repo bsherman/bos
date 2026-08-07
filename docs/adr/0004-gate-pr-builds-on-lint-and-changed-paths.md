@@ -61,6 +61,21 @@ every step PR runs actually reach, but not the static permission check
 GitHub performs against `build-desktop.yml`/`build-server.yml`'s declared
 requirement.
 
+`lint.yml` no longer declares its own top-level `concurrency:` block.
+Inside a called reusable workflow, `github.workflow` resolves to the
+*caller's* name, not the callee's — so `lint.yml`'s former group
+(`${{ github.workflow }}-${{ github.ref || github.run_id }}`) resolved to
+`PR Checks-<ref>` when invoked from `pr-checks.yml`, identical to
+`pr-checks.yml`'s own top-level concurrency group. The parent run held that
+group while trying to queue its own `lint` job into it, which GitHub
+detected as an unresolvable deadlock and canceled. The block's original
+purpose — canceling superseded runs on rapid PR pushes via
+`cancel-in-progress: ${{ github.event_name == 'pull_request' }}` — is moot
+now that `lint.yml` is never directly `pull_request`-triggered; that
+condition can't be true on its remaining direct triggers (`push`,
+`workflow_dispatch`). `pr-checks.yml`'s own top-level concurrency group
+already covers cancellation for the PR path.
+
 ## Consequences
 
 - A failing lint step now prevents the expensive multi-arch build from

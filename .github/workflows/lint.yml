@@ -6,9 +6,6 @@ on:  # yamllint disable-line rule:truthy
       - main
   workflow_call:
   workflow_dispatch:
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   lint:
     name: Shell, YAML, and Justfile Lint

@@ -43,28 +43,37 @@ flavors:
       tag: bazzite
       base_image: bazzite
       base_tag: stable
+      ci_enabled: true
+
+    - <<: *fedora-desktop
+      tag: bazzite-testing
+      base_image: bazzite
+      base_tag: testing
       ci_enabled: false
 
     - <<: *fedora-desktop
       tag: bazzite-nvidia
       base_image: bazzite-nvidia
       base_tag: stable
-      ci_enabled: false
+      ci_enabled: true
 
     - <<: *fedora-desktop
       tag: bazzite-gnome
       base_image: bazzite-gnome
       base_tag: stable
+      ci_enabled: true
 
     - <<: *fedora-desktop
       tag: bazzite-gnome-testing
       base_image: bazzite-gnome
       base_tag: testing
+      ci_enabled: false
 
     - <<: *fedora-desktop
       tag: bazzite-gnome-nvidia
       base_image: bazzite-gnome-nvidia
       base_tag: stable
+      ci_enabled: true
 
     # Currently disabled in CI
     - <<: *fedora-desktop

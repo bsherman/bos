@@ -28,7 +28,20 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
         if [[ ! ${IMAGE} =~ gnome ]]; then
             echo "Restoring kde-partitionmanager..."
             $DNF -y remove gnome-disk-utility
-            $DNF -y install kde-partitionmanager
+            # kde-partitionmanager and kpmcore are released in lockstep
+            # upstream (matching KDE Gear version numbers), but
+            # kde-partitionmanager's RPM only requires the libkpmcore soname,
+            # not a version -- so dnf can pair a newer kde-partitionmanager
+            # with the older kpmcore already in the base image, producing an
+            # ABI mismatch (undefined symbol at runtime). Pin
+            # kde-partitionmanager to whatever kpmcore version is already
+            # installed to keep them matched.
+            kpmcore_ver=$(rpm -q --qf '%{version}-%{release}' kpmcore 2>/dev/null || true)
+            if [[ -n ${kpmcore_ver} ]]; then
+                $DNF -y install "kde-partitionmanager-${kpmcore_ver}"
+            else
+                $DNF -y install kde-partitionmanager
+            fi
         fi
 
         if [[ ${IMAGE} =~ gnome ]]; then

@@ -22,5 +22,24 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
     # NOTE: these no longer seem to be installed on bazzite
     $DNF -y remove input-leap solaar virt-manager virt-viewer virt-v2v
 
+    if [[ ${IMAGE} =~ bazzite ]]; then
+        # Bazzite KDE variants swap kde-partitionmanager for gnome-disk-utility
+        # upstream; restore kde-partitionmanager for the KDE experience.
+        if [[ ! ${IMAGE} =~ gnome ]]; then
+            echo "Restoring kde-partitionmanager..."
+            $DNF -y remove gnome-disk-utility
+            $DNF -y install kde-partitionmanager
+        fi
+
+        if [[ ${IMAGE} =~ gnome ]]; then
+            # gnome-desktop3 is used by the GNOME desktop itself here, not just lutris
+            echo "Removing lutris..."
+            $DNF -y remove lutris
+        else
+            echo "Removing lutris and its gnome-desktop3 dependency..."
+            $DNF -y remove lutris gnome-desktop3
+        fi
+    fi
+
     /ctx/build_scripts/common-hygiene.sh
 fi

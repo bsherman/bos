@@ -1,25 +1,50 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
-set -ouex pipefail
+set ${SET_X:+-x} -eou pipefail
 
-# cockpit extensions not in ucore
-$DNF install -y cockpit-files cockpit-ostree
+# Proof of concept: replace the legacy, unmaintained cockpit-zfs-manager plugin
+# (bundled in the ucore base image) with the newer 45Drives/cockpit-zfs plugin.
+#
+# Scope is intentionally narrow: the Cockpit UI plugin only. We do NOT install
+# python3-libzfs (TrueNAS-specific py-libzfs, not packaged for Fedora; the plugin
+# falls back to zpool/zfs CLI) nor the project's system_files (ZED notify hooks
+# and the storage-alert systemd timer). A cleaner ucore-native implementation is
+# expected to follow.
 
-# cockpit plugin for ZFS management
-curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sSL -o /tmp/cockpit-zfs-manager-api.json \
-    "https://api.github.com/repos/45Drives/cockpit-zfs-manager/releases/latest"
-CZM_TGZ_URL=$(jq -r .tarball_url /tmp/cockpit-zfs-manager-api.json)
-curl -sSL -o /tmp/cockpit-zfs-manager.tar.gz "${CZM_TGZ_URL}"
+CZFS_VERSION="v1.3.0"
 
-mkdir -p /tmp/cockpit-zfs-manager
-tar -zxvf /tmp/cockpit-zfs-manager.tar.gz -C /tmp/cockpit-zfs-manager --strip-components=1
-mv /tmp/cockpit-zfs-manager/polkit-1/actions/* /usr/share/polkit-1/actions/
-mv /tmp/cockpit-zfs-manager/polkit-1/rules.d/* /usr/share/polkit-1/rules.d/
-mv /tmp/cockpit-zfs-manager/zfs /usr/share/cockpit
+# Remove the legacy cockpit-zfs-manager plugin bundled in the ucore base image.
+rm -vfr /usr/share/cockpit/zfs \
+    /usr/share/polkit-1/actions/*zfs* \
+    /usr/share/polkit-1/rules.d/*zfs* \
+    /usr/share/polkit-1/rules.d/*zpool*
 
-curl -sSL -o /tmp/cockpit-zfs-manager-font-fix.sh \
-    https://raw.githubusercontent.com/45Drives/scripts/refs/heads/main/cockpit_font_fix/fix-cockpit.sh
-chmod +x /tmp/cockpit-zfs-manager-font-fix.sh
-/tmp/cockpit-zfs-manager-font-fix.sh
+# Build toolchain for the Node/Yarn plugin build. jq is left in place because
+# later build steps (github-release-install.sh) depend on it.
+$DNF install -y nodejs npm git make moreutils
 
-rm -rf /tmp/cockpit-zfs-manager*
+# Install yarn into a throwaway prefix on PATH. On bootc/OSTree images both
+# /usr/local (-> /var/usrlocal) and /root (-> /var/roothome) are symlinks whose
+# targets do not exist at build time, so npm's default global prefix and yarn's
+# HOME-based cache both fail with ENOTDIR. Redirect HOME and the npm prefix to a
+# writable temp dir.
+NPM_GLOBAL="$(mktemp -d)"
+export HOME="${NPM_GLOBAL}"
+export NPM_CONFIG_PREFIX="${NPM_GLOBAL}"
+export NPM_CONFIG_CACHE="${NPM_GLOBAL}/cache"
+export PATH="${NPM_GLOBAL}/bin:${PATH}"
+npm install -g yarn
+
+BUILD_DIR="$(mktemp -d)"
+git clone --branch "${CZFS_VERSION}" --depth 1 --recurse-submodules \
+    https://github.com/45Drives/cockpit-zfs.git "${BUILD_DIR}"
+
+# Build the plugin, then install ONLY the Cockpit UI. The Makefile's top-level
+# `install` target also runs system-files-install (ZED hooks + systemd timer),
+# so we call the per-plugin target directly to keep scope to the UI.
+make -C "${BUILD_DIR}"
+make -C "${BUILD_DIR}" plugin-install-zfs
+
+# Drop the build-only toolchain and sources/caches to keep the layer lean.
+$DNF remove -y nodejs npm moreutils
+rm -rf "${BUILD_DIR}" "${NPM_GLOBAL}"

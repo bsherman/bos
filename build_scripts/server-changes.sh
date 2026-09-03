@@ -9,10 +9,4 @@ if [[ ${IMAGE} =~ ucore ]]; then
     $DNF install -y cockpit-ostree
 
     /ctx/build_scripts/common-hygiene.sh
-
-    # Temporarily remove cockpit-zfs plugin
-    rm -vfr /usr/share/cockpit/zfs \
-          /usr/share/polkit-1/actions/*zfs* \
-          /usr/share/polkit-1/rules.d/*zfs* \
-          /usr/share/polkit-1/rules.d/*zpool*
 fi

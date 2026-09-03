@@ -2,7 +2,8 @@
 
 set ${SET_X:+-x} -eou pipefail
 
-echo "No custom desktop packages at this time."
+echo "Running desktop packages scripts..."
+/ctx/build_scripts/desktop-sunshine.sh
 #echo "Running desktop packages scripts..."
 #/ctx/build_scripts/desktop-1password.sh
 

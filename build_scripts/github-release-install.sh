@@ -42,6 +42,7 @@ fi
 set ${SET_X:+-x} -eou pipefail
 
 API_JSON=$(mktemp /tmp/api-XXXXXXXX.json)
+trap 'rm -f "${API_JSON}"' EXIT
 API="https://api.github.com/repos/${ORG_PROJ}/releases/${RELTAG}"
 
 # Read GitHub token from secret mount if available (authenticates API to avoid rate limits)
@@ -53,14 +54,22 @@ fi
 # retry up to 5 times with 5 second delays for any error included HTTP 404 etc
 curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sL \
     "${CURL_AUTH_ARGS[@]}" "${API}" -o "${API_JSON}"
-RPM_URLS=$(jq \
+mapfile -t RPM_URLS < <(jq \
     -r \
     --arg arch_filter "${ARCH_FILTER}" \
     '.assets | sort_by(.created_at) | reverse | .[] | select(.name|test($arch_filter)) | select (.name|test("rpm$")) | .browser_download_url' \
     "${API_JSON}")
-for URL in ${RPM_URLS}; do
-    # WARNING: in case of multiple matches, this only installs the first matched release
-    echo "execute: $DNF install -y \"${URL}\""
-    $DNF install -y "${URL}"
-    break
-done
+
+if (( ${#RPM_URLS[@]} == 0 )); then
+    echo "No RPM asset matched '${ARCH_FILTER}' in ${ORG_PROJ} ${RELTAG}" >&2
+    exit 3
+fi
+
+if (( ${#RPM_URLS[@]} > 1 )); then
+    echo "Multiple RPM assets matched '${ARCH_FILTER}' in ${ORG_PROJ} ${RELTAG}:" >&2
+    printf '  %s\n' "${RPM_URLS[@]}" >&2
+    exit 4
+fi
+
+echo "execute: $DNF install -y \"${RPM_URLS[0]}\""
+$DNF install -y "${RPM_URLS[0]}"

@@ -12,6 +12,7 @@ repos=(
     fedora-updates-testing.repo
     gh-cli.repo
     google-chrome.repo
+    home_paulmcauley.repo
     negativo17-fedora-multimedia.repo
     negativo17-fedora-nvidia.repo
     nvidia-container-toolkit.repo

@@ -4,6 +4,7 @@ set ${SET_X:+-x} -eou pipefail
 
 echo "Running desktop packages scripts..."
 /ctx/build_scripts/desktop-sunshine.sh
+/ctx/build_scripts/desktop-kde-themes.sh
 #echo "Running desktop packages scripts..."
 #/ctx/build_scripts/desktop-1password.sh
 

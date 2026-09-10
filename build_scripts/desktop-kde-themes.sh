@@ -62,3 +62,83 @@ mkdir -p /usr/share/icons
 [[ -f /usr/share/icons/Qogir/index.theme ]]
 [[ -f /usr/share/icons/Qogir-Dark/index.theme ]]
 [[ -f /usr/share/icons/Qogir-Light/index.theme ]]
+
+echo "Installing Qlassy theme..."
+
+# Pin: bsherman/qlassy-theme main @ 2026-09-09 (PR #1, --system install mode).
+qlassy_sha="53d8b90ebc5e0b20523785663e693b911157f44e"
+qlassy_sha256="f9dd2b0a52a93e06af4cc3dcb64016ed6989326c58b5394315fbf6bd2a0defbd"
+
+# Reuse the Qogir ${workdir}; its EXIT trap is still armed.
+qlassy_tarball="${workdir}/qlassy.tar.gz"
+/ctx/build_scripts/github-release-url.sh \
+    bsherman/qlassy-theme \
+    --snapshot "${qlassy_sha}" \
+    -o "${qlassy_tarball}" \
+    --sha256 "${qlassy_sha256}"
+
+qlassy_extract="${workdir}/qlassy"
+mkdir -p "${qlassy_extract}"
+tar -xzf "${qlassy_tarball}" -C "${qlassy_extract}"
+mapfile -t qlassy_dirs < <(
+    find "${qlassy_extract}" -mindepth 1 -maxdepth 1 -type d
+)
+if ((${#qlassy_dirs[@]} != 1)); then
+    echo "ERROR: expected one Qlassy source dir, found ${#qlassy_dirs[@]}" >&2
+    exit 1
+fi
+
+# env -u guards against a narrowed XDG_DATA_DIRS hiding /usr/share from
+# install.sh's Klassy/Qogir prerequisite checks.
+env -u XDG_DATA_DIRS HOME="${HOME:-/root}" \
+    "${qlassy_dirs[0]}/install.sh" --system
+
+for variant in light dark; do
+    pkg="/usr/share/plasma/look-and-feel/dev.bsherman.qlassy.${variant}"
+    [[ -f "${pkg}/metadata.json" ]]
+    [[ -f "${pkg}/contents/defaults" ]]
+    [[ -f "${pkg}/contents/previews/preview.png" ]]
+    [[ -f "${pkg}/contents/previews/fullscreenpreview.jpg" ]]
+    grep -q '^BorderSize=None$' "${pkg}/contents/defaults"
+done
+
+echo "Defaulting Klassy Defenestrated 11 styling in /etc/skel..."
+
+# The layout keys ship in each theme's contents/defaults, but the finer
+# Klassy decoration styling only exists in klassyrc. Generate it headlessly
+# into a staging HOME and seed /etc/skel with it. No marker file: a later
+# user-run qlassy-theme/install.sh re-applies the preset idempotently.
+skel_stage="${workdir}/skel"
+dbus_wrap=()
+if command -v dbus-run-session >/dev/null; then
+    dbus_wrap=(dbus-run-session --)
+fi
+
+env -i PATH="${PATH}" \
+    HOME="${skel_stage}" \
+    XDG_CONFIG_HOME="${skel_stage}/.config" \
+    XDG_DATA_HOME="${skel_stage}/.local/share" \
+    XDG_CACHE_HOME="${skel_stage}/.cache" \
+    XDG_STATE_HOME="${skel_stage}/.local/state" \
+    QT_QPA_PLATFORM=offscreen \
+    timeout 120 "${dbus_wrap[@]}" \
+    klassy-settings --load-windeco-preset "Defenestrated 11"
+
+klassyrc="${skel_stage}/.config/klassy/klassyrc"
+[[ -f "${klassyrc}" ]]
+grep -q '^\[Windeco\]' "${klassyrc}"
+# loadPresetAndSave writes only keys that differ from Klassy's own defaults,
+# so ColorizeWindowOutlineWithButton=false (default true) is the reliable
+# Defenestrated 11 signature; the outline-style keys match the defaults and
+# are omitted. Fail closed if the headless run produced a bare skeleton.
+grep -qx 'ColorizeWindowOutlineWithButton=false' "${klassyrc}"
+echo "Captured klassyrc staging tree:"
+find "${skel_stage}" -type f -printf '  %P\n' | sort
+
+install -Dm0644 "${klassyrc}" /etc/skel/.config/klassy/klassyrc
+
+# Invariants: the layout lives in each theme's contents/defaults, and the
+# marker must never ship (it would make a user-run install.sh skip the
+# preset). Guard against a future change that copies the whole staging tree.
+[[ ! -e /etc/skel/.config/kwinrc ]]
+[[ ! -e /etc/skel/.config/qlassy-theme ]]

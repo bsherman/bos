@@ -44,13 +44,44 @@ if [[ ${IMAGE} =~ bluefin|bazzite ]]; then
             fi
         fi
 
+        # Bazzite bakes Lutris into the default panel launchers and menu
+        # favorites. Strip those entries wherever the package is removed so
+        # nothing points at a missing .desktop file.
+        strip_lutris_favorite() {
+            local file=$1 expr=$2
+            if [[ ! -f ${file} ]]; then
+                echo "Skipping Lutris favorite cleanup, not found: ${file}"
+                return 0
+            fi
+            sed -i "${expr}" "${file}"
+            if grep -q 'net\.lutris\.Lutris\.desktop' "${file}"; then
+                echo "ERROR: Lutris still referenced in ${file}" >&2
+                exit 1
+            fi
+        }
+
         if [[ ${IMAGE} =~ gnome ]]; then
             # gnome-desktop3 is used by the GNOME desktop itself here, not just lutris
             echo "Removing lutris..."
             $DNF -y remove lutris
+
+            strip_lutris_favorite \
+                /usr/share/glib-2.0/schemas/zz0-01-bazzite-desktop-silverblue-dash.gschema.override \
+                "s/'net\.lutris\.Lutris\.desktop', //"
+            glib-compile-schemas /usr/share/glib-2.0/schemas
         else
             echo "Removing lutris and its gnome-desktop3 dependency..."
             $DNF -y remove lutris gnome-desktop3
+
+            strip_lutris_favorite \
+                /usr/share/kde-settings/kde-profile/default/xdg/kicker-extra-favoritesrc \
+                's/net\.lutris\.Lutris\.desktop;//'
+            for tpl in \
+                /usr/share/plasma/layout-templates/org.kde.plasma.desktop.defaultPanel/contents/layout.js \
+                /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/bazzite-pins.js; do
+                strip_lutris_favorite "${tpl}" \
+                    '/applications:net\.lutris\.Lutris\.desktop/d'
+            done
         fi
     fi
 

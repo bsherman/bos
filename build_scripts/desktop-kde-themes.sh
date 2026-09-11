@@ -65,15 +65,15 @@ mkdir -p /usr/share/icons
 
 echo "Installing Qlassy theme..."
 
-# Pin: bsherman/qlassy-theme main @ 2026-09-09 (PR #1, --system install mode).
-qlassy_sha="53d8b90ebc5e0b20523785663e693b911157f44e"
-qlassy_sha256="f9dd2b0a52a93e06af4cc3dcb64016ed6989326c58b5394315fbf6bd2a0defbd"
+# Pin: bsherman/qlassy-theme release v0.1.0.
+qlassy_ref="v0.1.0"
+qlassy_sha256="00950b507e0d90b043045cbaa1ac09effb0b228942a13456d9ba98a5663b9be3"
 
 # Reuse the Qogir ${workdir}; its EXIT trap is still armed.
 qlassy_tarball="${workdir}/qlassy.tar.gz"
 /ctx/build_scripts/github-release-url.sh \
     bsherman/qlassy-theme \
-    --snapshot "${qlassy_sha}" \
+    --snapshot "${qlassy_ref}" \
     -o "${qlassy_tarball}" \
     --sha256 "${qlassy_sha256}"
 

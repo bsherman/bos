@@ -80,6 +80,7 @@ $DNF install -y \
 
 echo "Installing container tools..."
 $DNF install -y \
+    buildah \
     podman-tui \
     udica
 

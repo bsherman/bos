@@ -86,4 +86,7 @@ $DNF install -y \
 echo "Installing serial console tools..."
 $DNF install -y picocom
 
+echo "Installing terminal editor..."
+$DNF install -y msedit
+
 /ctx/build_scripts/github-release-install.sh frostyard/updex "$(uname -m).rpm"

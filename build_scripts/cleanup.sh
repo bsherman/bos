@@ -45,6 +45,6 @@ $DNF clean all
 
 rm -rf /tmp/*
 rm -rf /var/*
-ostree container commit
 mkdir -p /tmp
 mkdir -p /var/tmp && chmod -R 1777 /var/tmp
+bootc container lint

@@ -40,10 +40,6 @@
     "pinDigests": true
   },
 
-  "postUpdateOptions": [
-    "dockerfile:pinDigests"
-  ],
-
   "schedule": ["before 6am on monday"],
   "automerge": false,
   "prHourlyLimit": 2,
